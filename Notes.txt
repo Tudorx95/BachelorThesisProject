@@ -1,0 +1,18 @@
+
+- modificare frontend - adaugare bullets de loading noi; configurare corecta bullets (sa afiseze mesaje corect)
+                      - posibilitatea de a inchide simulation_options de la ESC 
+                      - posibilitatea de anulare a simularii; (se va sterge procesul si directorul aferent taskului)
+                      
+                      - daca simularea s-a terminat trebuie verificat ca fisierele s au creat si sunt conforme
+                      
+                      - posibilitatea de a vedea rezultatul simularii de fiecare data cand s-a terminat. (nu se va mai putea simula tot in acel fisier; No Run)
+                      - posibilitatea de a da export la informatiile despre simulare in pdf format 
+                      - adaugare pagina noua de compare intre mai multe simulari ale aceluiasi proiect 
+                      - (optional) - adaugare containere local pt a extrage metricile din fisierele primite de la server si a le vizualiza
+                      in mod dinamic in grafana
+
+
+                      - caseta de output trebuie populata doar pentru scriptul pt care s a rulat simularea. 
+                      - la cancelation vreau sa am posibilitatea sa rulez din nou simularea. Doar cand simularea s a terminat cu succes se va opri butonul de run 
+
+                      

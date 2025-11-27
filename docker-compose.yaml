@@ -1,0 +1,78 @@
+version: "3.9"
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:16
+    container_name: fl_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: fl_db
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: pass
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d fl_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build: ./backend
+    container_name: fl_backend
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      - DATABASE_URL=postgresql://user:pass@localhost:5432/fl_db
+      - SECRET_KEY=your-secret-key-change-this-in-production-use-random-string
+      - PYTHONUNBUFFERED=1
+      - ORCHESTRATOR_URL=http://10.13.0.102:8000
+      - ORCHESTRATOR_USER=tudor
+      - ORCHESTRATOR_PASSWORD=magma28fr
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+      - backend_data:/app/data
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # React Frontend
+  frontend:
+    build: ./simulator_frontend
+    container_name: fl_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - REACT_APP_API_URL=http://localhost:8000
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
+    networks:
+      - app-network
+    volumes:
+      - ./simulator_frontend/src:/app/src
+      - ./simulator_frontend/public:/app/public
+    stdin_open: true
+    tty: true
+
+volumes:
+  db_data:
+    driver: local
+  backend_data:
+    driver: local
+
+networks:
+  app-network:
+    driver: bridge
+  app-server-network:
+    driver: host
