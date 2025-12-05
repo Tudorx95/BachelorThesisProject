@@ -492,8 +492,53 @@ function AppContent() {
     // Cancel simulation
     const handleCancelSimulation = async () => {
         const taskId = activeFileSimState.currentTaskId;
+
+        // Helper function pentru cleanup local
+        const performLocalCleanup = (message) => {
+            console.log(`[Cancel] Performing local cleanup: ${message}`);
+
+            // Update orchestrator status to show cancellation
+            updateFileSimState(activeFileId, {
+                orchestratorStatus: {
+                    status: 'cancelled',
+                    message: message,
+                    step: activeFileSimState.orchestratorStatus?.step || 1
+                }
+            });
+
+            // Close and cleanup WebSocket connection
+            if (taskId) {
+                const ws = wsRefs.current[taskId];
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+                delete wsRefs.current[taskId];
+            }
+
+            // Update file output
+            const updatedProjects = projects.map(p => ({
+                ...p,
+                files: p.files.map(f =>
+                    f.id === activeFileId ? {
+                        ...f,
+                        output: (f.output || '') + '\n\n=== Cancelled ===\n' + message
+                    } : f
+                )
+            }));
+            setProjects(updatedProjects);
+
+            // Reset states
+            updateFileSimState(activeFileId, {
+                isRunning: false,
+                isCancelling: false,
+                currentTaskId: null
+            });
+        };
+
+        // Dacă nu există task ID, forțează cleanup local
         if (!taskId) {
-            console.error('[Cancel] No task ID available to cancel');
+            console.warn('[Cancel] No task ID available - performing force cleanup');
+            performLocalCleanup('Task cancelled locally (no active task ID)');
             return;
         }
 
@@ -511,60 +556,36 @@ function AppContent() {
                 }
             });
 
+            // Dacă taskul nu există pe backend (404), face cleanup local
+            if (response.status === 404) {
+                console.warn('[Cancel] Task not found on backend - performing local cleanup');
+                performLocalCleanup('Task not found on server (possibly already completed or cancelled)');
+                return;
+            }
+
             const data = await response.json();
 
             if (data.status === 'success') {
                 console.log('[Cancel] Simulation cancelled successfully:', data);
-
-                // Update orchestrator status to show cancellation
-                updateFileSimState(activeFileId, {
-                    orchestratorStatus: {
-                        status: 'cancelled',
-                        message: data.message || 'Simulation cancelled by user',
-                        step: activeFileSimState.orchestratorStatus?.step || 1
-                    }
-                });
-
-                // Close and cleanup WebSocket connection
-                const ws = wsRefs.current[taskId];
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.close();
-                }
-                delete wsRefs.current[taskId];
-
-                // Update file output
-                const updatedProjects = projects.map(p => ({
-                    ...p,
-                    files: p.files.map(f =>
-                        f.id === activeFileId ? {
-                            ...f,
-                            output: (f.output || '') + '\n\n=== Cancelled ===\n' + data.message
-                        } : f
-                    )
-                }));
-                setProjects(updatedProjects);
-
-                // Reset states
-                updateFileSimState(activeFileId, {
-                    isRunning: false,
-                    isCancelling: false,
-                    currentTaskId: null
-                });
-
+                performLocalCleanup(data.message || 'Simulation cancelled by user');
             } else {
                 console.error('[Cancel] Cancellation failed:', data);
-                alert(`Failed to cancel simulation: ${data.detail || 'Unknown error'}`);
-                updateFileSimState(activeFileId, {
-                    isCancelling: false
-                });
+                // Chiar dacă backend-ul spune că a eșuat, încearcă cleanup local
+                performLocalCleanup(`Cancellation response: ${data.detail || 'Unknown error'}`);
             }
 
         } catch (error) {
             console.error('[Cancel] Error cancelling simulation:', error);
-            alert(`Error cancelling simulation: ${error.message}`);
-            updateFileSimState(activeFileId, {
-                isCancelling: false
-            });
+
+            // Dacă este eroare de network sau task nu există, face cleanup local oricum
+            if (error.message.includes('fetch') || error.message.includes('NetworkError')) {
+                console.warn('[Cancel] Network error - performing local cleanup anyway');
+                performLocalCleanup('Task cancelled locally (server unreachable)');
+            } else {
+                // Pentru alte erori, arată mesaj dar tot face cleanup
+                alert(`Error cancelling simulation: ${error.message}\nPerforming local cleanup anyway.`);
+                performLocalCleanup('Task cancelled with errors');
+            }
         }
     };
 
