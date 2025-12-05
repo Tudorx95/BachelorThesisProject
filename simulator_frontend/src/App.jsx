@@ -51,6 +51,7 @@ function AppContent() {
     // Store WebSocket connections per taskId for multiple simultaneous simulations
     const wsRefs = useRef({});
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
 
     // Auth headers
     const authHeaders = {
@@ -407,7 +408,7 @@ function AppContent() {
 
     // Connect to WebSocket for orchestrator updates
     const connectWebSocket = (taskId, fileId, initialOutput) => {
-        const ws = new WebSocket(`ws://localhost:8000/ws/${taskId}`);
+        const ws = new WebSocket(`${WS_URL}/ws/${taskId}`);
 
         // Store this WebSocket with its taskId
         wsRefs.current[taskId] = ws;
