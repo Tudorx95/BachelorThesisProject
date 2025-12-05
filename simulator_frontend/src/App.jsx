@@ -165,6 +165,30 @@ function AppContent() {
         }
     };
 
+    // Check if task is still running on the backend
+    const checkTaskStatus = async (taskId) => {
+        try {
+            const response = await fetch(`${API_URL}/task-status/${taskId}`, {
+                headers: authHeaders
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log(`[Reconnect] Task ${taskId} not found on server`);
+                    return null;
+                }
+                throw new Error('Failed to check task status');
+            }
+
+            const status = await response.json();
+            console.log(`[Reconnect] Task ${taskId} status:`, status);
+            return status;
+        } catch (error) {
+            console.error('[Reconnect] Error checking task status:', error);
+            return null;
+        }
+    };
+
     // Load simulation results for active file
     const loadSimulationResults = async (fileId) => {
         try {
@@ -179,25 +203,85 @@ function AppContent() {
             }
 
             const result = await response.json();
+            console.log(`[Load] Received result from backend for file ${fileId}:`, result);
 
-            if (result && result.results) {
-                // Restore the orchestrator status from saved results
-                updateFileSimState(fileId, {
-                    orchestratorStatus: {
-                        status: 'completed',
-                        results_data: result.results,
-                        step: 7,
-                        message: 'Simulation completed (restored from database)'
+            if (result && (result.results || result.status === 'running')) {
+                // Restore the output if it exists
+                if (result.output) {
+                    const updatedProjects = projects.map(p => ({
+                        ...p,
+                        files: p.files.map(f =>
+                            f.id === fileId ? { ...f, output: result.output } : f
+                        )
+                    }));
+                    setProjects(updatedProjects);
+                }
+
+                // Check if this is a completed simulation or still running
+                if (result.status === 'completed') {
+                    console.log(`[Load] Restoring completed simulation with results:`, result.results);
+
+                    // Restore the orchestrator status from saved results
+                    updateFileSimState(fileId, {
+                        orchestratorStatus: {
+                            status: 'completed',
+                            results_data: result.results,
+                            step: 7,
+                            message: 'Simulation completed (restored from database)'
+                        }
+                    });
+
+                    // Mark as completed
+                    setCompletedSimulations(prev => ({
+                        ...prev,
+                        [fileId]: true
+                    }));
+
+                    console.log(`[Load] Loaded completed simulation results for file ${fileId}`);
+                } else if (result.task_id && result.status === 'running') {
+                    // Task is still running, check backend status and reconnect WebSocket
+                    console.log(`[Load] Found running task ${result.task_id} for file ${fileId}`);
+
+                    const taskStatus = await checkTaskStatus(result.task_id);
+
+                    if (taskStatus && taskStatus.status === 'running') {
+                        // Task is still running on backend, reconnect WebSocket
+                        console.log(`[Reconnect] Reconnecting WebSocket for task ${result.task_id}`);
+
+                        updateFileSimState(fileId, {
+                            isRunning: true,
+                            currentTaskId: result.task_id,
+                            orchestratorStatus: taskStatus.orchestrator_status || {
+                                status: 'running',
+                                step: taskStatus.current_step || 1,
+                                message: 'Reconnected to running simulation'
+                            }
+                        });
+
+                        // Reconnect WebSocket
+                        connectWebSocket(result.task_id, fileId, '');
+                    } else {
+                        // Task is no longer running, mark as completed or error
+                        console.log(`[Reconnect] Task ${result.task_id} is no longer running`);
+                        updateFileSimState(fileId, {
+                            isRunning: false,
+                            currentTaskId: null,
+                            orchestratorStatus: {
+                                status: taskStatus?.status || 'completed',
+                                step: 7,
+                                message: 'Simulation finished while offline',
+                                results_data: taskStatus?.results || result.results
+                            }
+                        });
+
+                        if (taskStatus?.status === 'completed') {
+                            setCompletedSimulations(prev => ({
+                                ...prev,
+                                [fileId]: true
+                            }));
+                        }
                     }
-                });
-
-                // Mark as completed
-                setCompletedSimulations(prev => ({
-                    ...prev,
-                    [fileId]: true
-                }));
-
-                console.log(`Loaded simulation results for file ${fileId}`);
+                }
             }
         } catch (error) {
             console.error('Error loading simulation results:', error);
@@ -374,12 +458,18 @@ function AppContent() {
     };
 
     // Save simulation results to database
-    const saveSimulationResults = async (fileId, taskId, config, results, status = 'completed') => {
+    const saveSimulationResults = async (fileId, taskId, config, results, status = 'completed', output = null) => {
         try {
             const project = projects.find(p => p.files.some(f => f.id === fileId));
             if (!project) {
                 console.error('Project not found for file', fileId);
                 return;
+            }
+
+            // Get current output from the file if not provided
+            if (!output) {
+                const file = project.files.find(f => f.id === fileId);
+                output = file?.output || null;
             }
 
             const response = await fetch(`${API_URL}/api/simulation-results`, {
@@ -391,6 +481,7 @@ function AppContent() {
                     task_id: taskId,
                     simulation_config: config,
                     results: results,
+                    output: output,
                     status: status
                 })
             });
@@ -663,6 +754,16 @@ function AppContent() {
                 updateFileSimState(activeFileId, {
                     currentTaskId: data.task_id
                 });
+
+                // Save initial task info to database for reconnection after refresh
+                await saveSimulationResults(
+                    activeFileId,
+                    data.task_id,
+                    simulationConfig,
+                    null, // No results yet
+                    'running'
+                );
+
                 // Pass fileId to connectWebSocket
                 connectWebSocket(data.task_id, activeFileId, data.output);
             } else {

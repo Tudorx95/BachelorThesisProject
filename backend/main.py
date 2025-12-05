@@ -91,7 +91,7 @@ class File(Base):
 
 class SimulationResult(Base):
     __tablename__ = "simulation_results"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
@@ -99,10 +99,11 @@ class SimulationResult(Base):
     task_id = Column(String, unique=True, nullable=False, index=True)
     simulation_config = Column(JSON, nullable=False)
     results = Column(JSON, nullable=True)
+    output = Column(Text, nullable=True)  # Store console output
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
-    
+
     file = relationship("File", back_populates="simulation_results")
 
 # Create tables
@@ -185,6 +186,7 @@ class SimulationResultCreate(BaseModel):
     task_id: str
     simulation_config: dict
     results: Optional[dict] = None
+    output: Optional[str] = None
     status: str = "pending"
 
 class SimulationResultResponse(BaseModel):
@@ -195,6 +197,7 @@ class SimulationResultResponse(BaseModel):
     task_id: str
     simulation_config: dict
     results: Optional[dict]
+    output: Optional[str]
     status: str
     created_at: datetime
     completed_at: Optional[datetime]
@@ -779,6 +782,35 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         })
 
 
+@app.get("/task-status/{task_id}")
+async def get_task_status(task_id: str):
+    """Get the current status of a task"""
+    logger.info(f"Checking status for task {task_id}")
+
+    # Check if task exists in our active tasks
+    if task_id not in active_tasks:
+        logger.warning(f"Task {task_id} not found in active tasks")
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task_info = active_tasks[task_id]
+    status_info = task_info.get("status", {})
+
+    response = {
+        "task_id": task_id,
+        "status": status_info.get("status", "running") if isinstance(status_info, dict) else "running",
+        "current_step": status_info.get("step") if isinstance(status_info, dict) else None,
+        "message": status_info.get("message") if isinstance(status_info, dict) else None,
+        "orchestrator_status": status_info if isinstance(status_info, dict) else None,
+    }
+
+    # Include results if completed
+    if status_info.get("status") == "completed" and "results_data" in task_info:
+        response["results"] = task_info["results_data"]
+
+    logger.info(f"Task {task_id} status: {response}")
+    return response
+
+
 @app.get("/health")
 async def health_check():
     return {
@@ -805,13 +837,14 @@ async def save_simulation_result(
         if existing:
             # Update existing result
             existing.results = result_data.results
+            existing.output = result_data.output
             existing.status = result_data.status
             if result_data.status == "completed":
                 existing.completed_at = datetime.utcnow()
             db.commit()
             db.refresh(existing)
             return existing
-        
+
         # Create new simulation result
         sim_result = SimulationResult(
             user_id=current_user.id,
@@ -820,6 +853,7 @@ async def save_simulation_result(
             task_id=result_data.task_id,
             simulation_config=result_data.simulation_config,
             results=result_data.results,
+            output=result_data.output,
             status=result_data.status,
             completed_at=datetime.utcnow() if result_data.status == "completed" else None
         )
@@ -843,17 +877,32 @@ async def get_file_simulation_results(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get the latest simulation results for a file"""
+    """Get the latest simulation results for a file (including running simulations)"""
     try:
-        # Get the most recent completed simulation for this file
+        # First check for running simulations
+        running_result = db.query(SimulationResult).filter(
+            SimulationResult.file_id == file_id,
+            SimulationResult.user_id == current_user.id,
+            SimulationResult.status == "running"
+        ).order_by(SimulationResult.created_at.desc()).first()
+
+        if running_result:
+            logger.info(f"Found running simulation for file {file_id}: task {running_result.task_id}")
+            return running_result
+
+        # If no running simulation, get the most recent completed simulation
+        # Use created_at for ordering since completed_at might be NULL
         result = db.query(SimulationResult).filter(
             SimulationResult.file_id == file_id,
             SimulationResult.user_id == current_user.id,
             SimulationResult.status == "completed"
-        ).order_by(SimulationResult.completed_at.desc()).first()
-        
+        ).order_by(SimulationResult.created_at.desc()).first()
+
+        if result:
+            logger.info(f"Found completed simulation for file {file_id}: results present = {result.results is not None}")
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Error fetching simulation results: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch results: {str(e)}")
@@ -867,11 +916,12 @@ async def get_project_simulations(
 ):
     """Get all completed simulations for a project"""
     try:
+        # Use created_at for ordering since completed_at might be NULL
         simulations = db.query(SimulationResult).filter(
             SimulationResult.project_id == project_id,
             SimulationResult.user_id == current_user.id,
             SimulationResult.status == "completed"
-        ).order_by(SimulationResult.completed_at.desc()).all()
+        ).order_by(SimulationResult.created_at.desc()).all()
         
         return {
             "simulations": [
