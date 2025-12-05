@@ -7,11 +7,32 @@ export default function CodeCell({ content, handleContentChange, handleRun, isRu
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(content);
+            // Încearcă metoda modernă (funcționează doar pe HTTPS sau localhost)
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText(content);
+            } else {
+                // Fallback pentru HTTP (funcționează și pe servere remote fără HTTPS)
+                const textArea = document.createElement('textarea');
+                textArea.value = content;
+                textArea.style.position = 'fixed';
+                textArea.style.left = '-999999px';
+                textArea.style.top = '-999999px';
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+
+                try {
+                    document.execCommand('copy');
+                } finally {
+                    document.body.removeChild(textArea);
+                }
+            }
+
             setCopied(true);
             setTimeout(() => setCopied(false), 2000); // Reset după 2 secunde
         } catch (err) {
             console.error('Failed to copy:', err);
+            alert('Nu s-a putut copia textul. Vă rugăm selectați manual și copiați cu Ctrl+C.');
         }
     };
 
