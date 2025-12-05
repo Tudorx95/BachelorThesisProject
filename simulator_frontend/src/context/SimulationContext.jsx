@@ -1,0 +1,367 @@
+// src/context/SimulationContext.jsx
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
+
+const SimulationContext = createContext(null);
+
+const STORAGE_KEYS = {
+    SIMULATIONS: 'fl_simulations_history',
+    ACTIVE_SIM: 'fl_active_simulation',
+    CONFIG: 'fl_simulation_config',
+    SIMULATION_OUTPUT: 'fl_simulation_output'
+};
+
+export const SimulationProvider = ({ children }) => {
+    // Încarcă simulările din localStorage
+    const [simulations, setSimulations] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.SIMULATIONS);
+            return saved ? JSON.parse(saved) : [];
+        } catch (error) {
+            console.error('Error loading simulations:', error);
+            return [];
+        }
+    });
+
+    // Simularea activă curentă
+    const [activeSimulation, setActiveSimulation] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_SIM);
+            return saved ? JSON.parse(saved) : null;
+        } catch (error) {
+            console.error('Error loading active simulation:', error);
+            return null;
+        }
+    });
+
+    // Output-ul simulării (pentru OutputCell)
+    const [simulationOutput, setSimulationOutput] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.SIMULATION_OUTPUT);
+            return saved ? JSON.parse(saved) : null;
+        } catch (error) {
+            console.error('Error loading simulation output:', error);
+            return null;
+        }
+    });
+
+    // Configurația curentă
+    const [config, setConfig] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
+            return saved ? JSON.parse(saved) : {
+                N: 10,
+                M: 2,
+                NN_NAME: 'SimpleNN',
+                R: 5,
+                ROUNDS: 10,
+                strategy: 'first',
+                poison_operation: 'noise',
+                poison_intensity: 0.1,
+                poison_percentage: 0.2
+            };
+        } catch (error) {
+            console.error('Error loading config:', error);
+            return {
+                N: 10,
+                M: 2,
+                NN_NAME: 'SimpleNN',
+                R: 5,
+                ROUNDS: 10,
+                strategy: 'first',
+                poison_operation: 'noise',
+                poison_intensity: 0.1,
+                poison_percentage: 0.2
+            };
+        }
+    });
+
+    const [loading, setLoading] = useState(false);
+
+    // Salvează automat în localStorage
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.SIMULATIONS, JSON.stringify(simulations));
+        } catch (error) {
+            console.error('Error saving simulations:', error);
+        }
+    }, [simulations]);
+
+    useEffect(() => {
+        try {
+            if (activeSimulation) {
+                localStorage.setItem(STORAGE_KEYS.ACTIVE_SIM, JSON.stringify(activeSimulation));
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_SIM);
+            }
+        } catch (error) {
+            console.error('Error saving active simulation:', error);
+        }
+    }, [activeSimulation]);
+
+    useEffect(() => {
+        try {
+            if (simulationOutput) {
+                localStorage.setItem(STORAGE_KEYS.SIMULATION_OUTPUT, JSON.stringify(simulationOutput));
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.SIMULATION_OUTPUT);
+            }
+        } catch (error) {
+            console.error('Error saving simulation output:', error);
+        }
+    }, [simulationOutput]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
+        } catch (error) {
+            console.error('Error saving config:', error);
+        }
+    }, [config]);
+
+    // Pornește o simulare nouă
+    const startSimulation = useCallback((fileId, projectId) => {
+        const newSim = {
+            id: `sim_${Date.now()}`,
+            fileId,
+            projectId,
+            config: { ...config },
+            status: 'running',
+            startTime: new Date().toISOString(),
+            progress: 0,
+            currentStep: 1,
+            steps: {
+                1: { name: 'Initializing FL Environment', status: 'running', message: 'Setting up...', timestamp: new Date().toISOString() },
+                2: { name: 'Distributing Data to Clients', status: 'pending', message: null, timestamp: null },
+                3: { name: 'Training Rounds', status: 'pending', message: null, timestamp: null },
+                4: { name: 'Aggregating Models', status: 'pending', message: null, timestamp: null },
+                5: { name: 'Final Evaluation', status: 'pending', message: null, timestamp: null }
+            },
+            results: null,
+            error: null
+        };
+
+        setActiveSimulation(newSim);
+        setSimulations(prev => [newSim, ...prev]);
+        setSimulationOutput({
+            fileId,
+            projectId,
+            simulationId: newSim.id,
+            isRunning: true,
+            isCompleted: false
+        });
+        setLoading(true);
+
+        return newSim.id;
+    }, [config]);
+
+    // Actualizează step-ul curent
+    const updateSimulationStep = useCallback((id, stepNumber, updates) => {
+        setSimulations(prev =>
+            prev.map(sim =>
+                sim.id === id
+                    ? {
+                        ...sim,
+                        currentStep: stepNumber,
+                        steps: {
+                            ...sim.steps,
+                            [stepNumber]: {
+                                ...sim.steps[stepNumber],
+                                ...updates,
+                                timestamp: updates.timestamp || new Date().toISOString()
+                            }
+                        },
+                        lastUpdated: new Date().toISOString()
+                    }
+                    : sim
+            )
+        );
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(prev => ({
+                ...prev,
+                currentStep: stepNumber,
+                steps: {
+                    ...prev.steps,
+                    [stepNumber]: {
+                        ...prev.steps[stepNumber],
+                        ...updates,
+                        timestamp: updates.timestamp || new Date().toISOString()
+                    }
+                },
+                lastUpdated: new Date().toISOString()
+            }));
+        }
+    }, [activeSimulation]);
+
+    // Actualizează progresul
+    const updateProgress = useCallback((id, progress) => {
+        setSimulations(prev =>
+            prev.map(sim =>
+                sim.id === id ? { ...sim, progress } : sim
+            )
+        );
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(prev => ({ ...prev, progress }));
+        }
+    }, [activeSimulation]);
+
+    // Finalizează simularea
+    const completeSimulation = useCallback((id, results) => {
+        const updates = {
+            status: 'completed',
+            endTime: new Date().toISOString(),
+            progress: 100,
+            results,
+            error: null,
+            currentStep: 5,
+            steps: {
+                ...activeSimulation?.steps,
+                5: {
+                    ...activeSimulation?.steps[5],
+                    status: 'completed',
+                    message: 'Simulation completed successfully',
+                    timestamp: new Date().toISOString()
+                }
+            }
+        };
+
+        setSimulations(prev =>
+            prev.map(sim => (sim.id === id ? { ...sim, ...updates } : sim))
+        );
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(prev => ({ ...prev, ...updates }));
+        }
+
+        setSimulationOutput(prev => ({
+            ...prev,
+            isRunning: false,
+            isCompleted: true,
+            results
+        }));
+
+        setLoading(false);
+
+        // Oprește simularea activă după 3 secunde
+        setTimeout(() => {
+            setActiveSimulation(null);
+        }, 3000);
+    }, [activeSimulation]);
+
+    // Marchează simularea ca eșuată
+    const failSimulation = useCallback((id, errorMessage) => {
+        const updates = {
+            status: 'failed',
+            endTime: new Date().toISOString(),
+            error: errorMessage
+        };
+
+        setSimulations(prev =>
+            prev.map(sim => (sim.id === id ? { ...sim, ...updates } : sim))
+        );
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(prev => ({ ...prev, ...updates }));
+        }
+
+        setSimulationOutput(prev => ({
+            ...prev,
+            isRunning: false,
+            error: errorMessage
+        }));
+
+        setLoading(false);
+
+        setTimeout(() => {
+            setActiveSimulation(null);
+        }, 2000);
+    }, [activeSimulation]);
+
+    // Oprește simularea
+    const stopSimulation = useCallback((id) => {
+        const updates = {
+            status: 'stopped',
+            endTime: new Date().toISOString()
+        };
+
+        setSimulations(prev =>
+            prev.map(sim => (sim.id === id ? { ...sim, ...updates } : sim))
+        );
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(null);
+        }
+
+        setSimulationOutput(prev => ({
+            ...prev,
+            isRunning: false
+        }));
+
+        setLoading(false);
+    }, [activeSimulation]);
+
+    // Șterge output-ul simulării
+    const clearSimulationOutput = useCallback(() => {
+        setSimulationOutput(null);
+        localStorage.removeItem(STORAGE_KEYS.SIMULATION_OUTPUT);
+    }, []);
+
+    // Șterge o simulare
+    const deleteSimulation = useCallback((id) => {
+        setSimulations(prev => prev.filter(sim => sim.id !== id));
+
+        if (activeSimulation?.id === id) {
+            setActiveSimulation(null);
+            clearSimulationOutput();
+        }
+    }, [activeSimulation, clearSimulationOutput]);
+
+    // Șterge toate simulările
+    const clearAllSimulations = useCallback(() => {
+        setSimulations([]);
+        setActiveSimulation(null);
+        clearSimulationOutput();
+        localStorage.removeItem(STORAGE_KEYS.SIMULATIONS);
+        localStorage.removeItem(STORAGE_KEYS.ACTIVE_SIM);
+    }, [clearSimulationOutput]);
+
+    const value = {
+        // State
+        simulations,
+        activeSimulation,
+        simulationOutput,
+        config,
+        loading,
+
+        // Actions
+        setConfig,
+        startSimulation,
+        updateSimulationStep,
+        updateProgress,
+        completeSimulation,
+        failSimulation,
+        stopSimulation,
+        clearSimulationOutput,
+        deleteSimulation,
+        clearAllSimulations,
+
+        // Computed
+        hasActiveSimulation: !!activeSimulation,
+        isRunning: activeSimulation?.status === 'running'
+    };
+
+    return (
+        <SimulationContext.Provider value={value}>
+            {children}
+        </SimulationContext.Provider>
+    );
+};
+
+export const useSimulation = () => {
+    const context = useContext(SimulationContext);
+    if (!context) {
+        throw new Error('useSimulation must be used within SimulationProvider');
+    }
+    return context;
+};
