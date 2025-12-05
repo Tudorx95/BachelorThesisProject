@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS simulation_results (
     task_id VARCHAR(100) UNIQUE NOT NULL,
     simulation_config JSONB NOT NULL,
     results JSONB,
+    output TEXT,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP
