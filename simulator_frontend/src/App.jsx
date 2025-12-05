@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SimulationProvider, useSimulation } from './context/SimulationContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Sidebar from './components/Sidebar';
@@ -11,23 +12,39 @@ import ComparePage from './pages/ComparePage';
 import MultiExportCSV from './components/MultiExportCSV';
 
 function AppContent() {
-    const { user, token, loading, isAuthenticated } = useAuth();
+    const { user, token, loading: authLoading, isAuthenticated } = useAuth();
+
+    // Use SimulationContext pentru persistență
+    const {
+        config: simulationConfig,
+        setConfig: setSimulationConfig,
+        activeSimulation,
+        simulationOutput,
+        startSimulation,
+        updateSimulationStep,
+        updateProgress,
+        completeSimulation,
+        failSimulation,
+        stopSimulation,
+        clearSimulationOutput,
+        fileSimulationStates,
+        setFileSimulationStates,
+        completedSimulations,
+        setCompletedSimulations,
+        activeProjectId,
+        setActiveProjectId,
+        activeFileId,
+        setActiveFileId
+    } = useSimulation();
+
     const [showLogin, setShowLogin] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // Projects and files state
     const [projects, setProjects] = useState([]);
-    const [activeProjectId, setActiveProjectId] = useState(null);
-    const [activeFileId, setActiveFileId] = useState(null);
-
-    // Per-file simulation state - stocăm starea pentru fiecare fișier
-    const [fileSimulationStates, setFileSimulationStates] = useState({});
-    // Structure: { fileId: { isRunning, isCancelling, currentTaskId, orchestratorStatus } }
 
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
-    const [simulationConfig, setSimulationConfig] = useState(null);
     const [pendingRun, setPendingRun] = useState(false);
-    const [completedSimulations, setCompletedSimulations] = useState({});
     const [showComparePage, setShowComparePage] = useState(false);
     const [showMultiExport, setShowMultiExport] = useState(false);
 
@@ -649,7 +666,7 @@ function AppContent() {
     };
 
     // Show loading screen
-    if (loading) {
+    if (authLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <div className="text-center">
@@ -771,7 +788,9 @@ function AppContent() {
 export default function App() {
     return (
         <AuthProvider>
-            <AppContent />
+            <SimulationProvider>
+                <AppContent />
+            </SimulationProvider>
         </AuthProvider>
     );
 }

@@ -7,7 +7,11 @@ const STORAGE_KEYS = {
     SIMULATIONS: 'fl_simulations_history',
     ACTIVE_SIM: 'fl_active_simulation',
     CONFIG: 'fl_simulation_config',
-    SIMULATION_OUTPUT: 'fl_simulation_output'
+    SIMULATION_OUTPUT: 'fl_simulation_output',
+    FILE_SIM_STATES: 'fl_file_simulation_states',
+    COMPLETED_SIMS: 'fl_completed_simulations',
+    ACTIVE_PROJECT: 'fl_active_project_id',
+    ACTIVE_FILE: 'fl_active_file_id'
 };
 
 export const SimulationProvider = ({ children }) => {
@@ -77,6 +81,47 @@ export const SimulationProvider = ({ children }) => {
 
     const [loading, setLoading] = useState(false);
 
+    // State-uri adiționale pentru persistență
+    const [fileSimulationStates, setFileSimulationStates] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.FILE_SIM_STATES);
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) {
+            console.error('Error loading file simulation states:', error);
+            return {};
+        }
+    });
+
+    const [completedSimulations, setCompletedSimulations] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.COMPLETED_SIMS);
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) {
+            console.error('Error loading completed simulations:', error);
+            return {};
+        }
+    });
+
+    const [activeProjectId, setActiveProjectId] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_PROJECT);
+            return saved ? JSON.parse(saved) : null;
+        } catch (error) {
+            console.error('Error loading active project:', error);
+            return null;
+        }
+    });
+
+    const [activeFileId, setActiveFileId] = useState(() => {
+        try {
+            const saved = localStorage.getItem(STORAGE_KEYS.ACTIVE_FILE);
+            return saved ? JSON.parse(saved) : null;
+        } catch (error) {
+            console.error('Error loading active file:', error);
+            return null;
+        }
+    });
+
     // Salvează automat în localStorage
     useEffect(() => {
         try {
@@ -117,6 +162,47 @@ export const SimulationProvider = ({ children }) => {
             console.error('Error saving config:', error);
         }
     }, [config]);
+
+    // Salvează state-urile adiționale
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.FILE_SIM_STATES, JSON.stringify(fileSimulationStates));
+        } catch (error) {
+            console.error('Error saving file simulation states:', error);
+        }
+    }, [fileSimulationStates]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(STORAGE_KEYS.COMPLETED_SIMS, JSON.stringify(completedSimulations));
+        } catch (error) {
+            console.error('Error saving completed simulations:', error);
+        }
+    }, [completedSimulations]);
+
+    useEffect(() => {
+        try {
+            if (activeProjectId) {
+                localStorage.setItem(STORAGE_KEYS.ACTIVE_PROJECT, JSON.stringify(activeProjectId));
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_PROJECT);
+            }
+        } catch (error) {
+            console.error('Error saving active project:', error);
+        }
+    }, [activeProjectId]);
+
+    useEffect(() => {
+        try {
+            if (activeFileId) {
+                localStorage.setItem(STORAGE_KEYS.ACTIVE_FILE, JSON.stringify(activeFileId));
+            } else {
+                localStorage.removeItem(STORAGE_KEYS.ACTIVE_FILE);
+            }
+        } catch (error) {
+            console.error('Error saving active file:', error);
+        }
+    }, [activeFileId]);
 
     // Pornește o simulare nouă
     const startSimulation = useCallback((fileId, projectId) => {
@@ -333,6 +419,10 @@ export const SimulationProvider = ({ children }) => {
         simulationOutput,
         config,
         loading,
+        fileSimulationStates,
+        completedSimulations,
+        activeProjectId,
+        activeFileId,
 
         // Actions
         setConfig,
@@ -345,6 +435,10 @@ export const SimulationProvider = ({ children }) => {
         clearSimulationOutput,
         deleteSimulation,
         clearAllSimulations,
+        setFileSimulationStates,
+        setCompletedSimulations,
+        setActiveProjectId,
+        setActiveFileId,
 
         // Computed
         hasActiveSimulation: !!activeSimulation,
