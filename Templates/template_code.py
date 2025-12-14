@@ -28,40 +28,14 @@ def load_train_test_data() -> Tuple[tf.data.Dataset, tf.data.Dataset]:
     
     ds_train = tfds.load('mnist', split='train[:80%]', as_supervised=True)
     ds_test = tfds.load('mnist', split='train[80%:]', as_supervised=True)
-    
-    
-    # ds_train = ds_train.map(preprocess).batch(32).prefetch(tf.data.AUTOTUNE)
-    # ds_test = ds_test.map(preprocess).batch(32).prefetch(tf.data.AUTOTUNE)
-    
+
     return ds_train, ds_test
 
-    # img_size = (224, 224)
-    # batch_size=32
-    
-    # num_channels = 3  # modelele Keras Applications așteaptă RGB
-
-    # # Încarcă MNIST
-    # ds_train = tfds.load('mnist', split='train[:80%]', as_supervised=True)
-    # ds_test  = tfds.load('mnist', split='train[80%:]', as_supervised=True)
-    
-    # # Funcție de preprocesare
-    # def preprocess(image, label):
-    #     image = tf.cast(image, tf.float32) / 255.0
-    #     image = tf.image.resize(image, img_size)
-        
-    #     # Transformăm grayscale -> RGB
-    #     if image.shape[-1] == 1 and num_channels == 3:
-    #         image = tf.image.grayscale_to_rgb(image)
-        
-    #     label = tf.one_hot(label, 10)
-    #     return image, label
-    
-    # ds_train = ds_train.map(preprocess).shuffle(1000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    # ds_test  = ds_test.map(preprocess).batch(batch_size).prefetch(tf.data.AUTOTUNE)
-    
-    # return ds_train, ds_test
-
 def preprocess(image, label):
+        """
+        Preprocesare de bază pentru imagini și label-uri.
+        Aceasta este funcția folosită în FL simulation.
+        """
         image = tf.cast(image, tf.float32) / 255.0
         image = tf.image.resize(image, (28, 28))
         label = tf.cast(label, tf.int32)
@@ -81,6 +55,77 @@ def preprocess_loaded_data(train_ds, test_ds)-> Tuple[tf.data.Dataset, tf.data.D
     """
     train_ds = train_ds.map(preprocess).batch(32).prefetch(tf.data.AUTOTUNE)
     test_ds = test_ds.map(preprocess).batch(32).prefetch(tf.data.AUTOTUNE)
+    return train_ds, test_ds
+
+
+def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[tf.data.Dataset, tf.data.Dataset]:
+    """
+    Funcție pentru încărcarea datelor în FL simulator (AGNOSTIC).
+    
+    Această funcție este apelată de fd_simulator pentru fiecare client.
+    Implementarea este COMPLETĂ - simulatorul NU aplică nicio preprocesare proprie!
+    
+    Args:
+        data_path: Path către directorul cu date (ex: "clean_data" sau "clean_data_poisoned")
+        batch_size: Dimensiunea batch-ului
+        
+    Returns:
+        Tuple[tf.data.Dataset, tf.data.Dataset]: (train_ds, test_ds) complet preprocesate
+        
+    Important:
+        - Datele returnate TREBUIE să fie gata pentru antrenare (preprocessed, batched)
+        - Simulatorul NU va aplica nicio transformare suplimentară
+        - Această funcție oferă control TOTAL asupra preprocesării
+    """
+    from pathlib import Path
+    
+    data_path = Path(data_path)
+    train_dir = data_path / "train"
+    test_dir = data_path / "test"
+    
+    if not train_dir.exists() or not test_dir.exists():
+        raise FileNotFoundError(f"Data directories not found: {data_path}")
+    
+    # Încarcă datele din directoare
+    # label_mode='int' pentru că vom aplica one-hot manual în preprocess
+    train_ds = tf.keras.utils.image_dataset_from_directory(
+        train_dir,
+        image_size=(28, 28),
+        batch_size=batch_size,
+        color_mode='grayscale',
+        label_mode='int',  # Labels ca indici întregi (0-9)
+        shuffle=True,
+        seed=42
+    )
+    
+    test_ds = tf.keras.utils.image_dataset_from_directory(
+        test_dir,
+        image_size=(28, 28),
+        batch_size=batch_size,
+        color_mode='grayscale',
+        label_mode='int',
+        shuffle=False
+    )
+    
+    # Aplică preprocesare COMPLETĂ
+    def preprocess_for_fl(image, label):
+        """Preprocesare specifică FL - normalizare + one-hot encoding."""
+        # Normalizare
+        image = tf.cast(image, tf.float32) / 255.0
+        
+        # One-hot encoding
+        label = tf.cast(label, tf.int32)
+        label = tf.one_hot(label, 10)
+        
+        return image, label
+    
+    train_ds = train_ds.map(preprocess_for_fl, num_parallel_calls=tf.data.AUTOTUNE)
+    test_ds = test_ds.map(preprocess_for_fl, num_parallel_calls=tf.data.AUTOTUNE)
+    
+    # Optimizare
+    train_ds = train_ds.prefetch(tf.data.AUTOTUNE)
+    test_ds = test_ds.prefetch(tf.data.AUTOTUNE)
+    
     return train_ds, test_ds
 
 
@@ -211,14 +256,6 @@ def train_neural_network(
         )
     
     if callbacks is None:
-        # Callbacks ce opreste modelul din invatare cand metrica val_loss nu se imbunatateste 
-        # callbacks = [
-        #     tf.keras.callbacks.EarlyStopping(
-        #         monitor='val_loss' if validation_dataset else 'loss',
-        #         patience=3,
-        #         restore_best_weights=True
-        #     )
-        # ]
         callbacks = []
     
     # Antrenare
@@ -512,19 +549,8 @@ def get_data_preprocessing() -> callable:
     """
     return preprocess  # sau altă funcție definită de user
 
-
-
-if __name__ == "__main__":
-    """
-    Exemplu complet de utilizare a template-ului.
-    Acest cod trebuie adaptat de utilizator în Colab.
-    """
-    
-    # Pasul 1: Utilizatorul definește funcția de încărcare date
-    # (în acest exemplu folosim MNIST pentru demonstrație)
-        
-    # Pasul 2: Utilizatorul creează modelul
-    def create_model():
+# Pasul 2: Utilizatorul creează modelul
+def create_model():
         """Exemplu de model simplu pentru MNIST"""
         model = tf.keras.Sequential([
             tf.keras.layers.Flatten(input_shape=(28, 28, 1)),
@@ -537,29 +563,17 @@ if __name__ == "__main__":
         
         return model
 
-    # def create_model(num_classes=10):
-    #     from tensorflow.keras.applications import VGG16
-    #     base_model = VGG16(
-    #         include_top=False,
-    #         weights='imagenet', 
-    #         input_shape=(224, 224, 3)
-    #     )
-    #     base_model.trainable = False  # sau True dacă vrei fine-tuning
 
-    #     model = tf.keras.Sequential([
-    #         base_model,
-    #         tf.keras.layers.GlobalAveragePooling2D(),
-    #         tf.keras.layers.Dense(256, activation='relu'),
-    #         tf.keras.layers.Dropout(0.3),
-    #         tf.keras.layers.Dense(num_classes, activation='softmax')
-    #     ])
+if __name__ == "__main__":
+    """
+    Exemplu complet de utilizare a template-ului.
+    Acest cod trebuie adaptat de utilizator în Colab.
+    """
+    
+    # Pasul 1: Utilizatorul definește funcția de încărcare date
+    # (în acest exemplu folosim MNIST pentru demonstrație)
         
-    #     model.compile(
-    #         optimizer='adam',
-    #         loss='categorical_crossentropy',
-    #         metrics=['accuracy']
-    #     )
-    #     return model
+    
     
     # Pasul 3: Încărcare date
     train_ds, test_ds = load_train_test_data()
@@ -590,8 +604,9 @@ if __name__ == "__main__":
     # Pasul 8: Calculare metrici
     metrics = calculate_metrics(model, test_ds)
     # print metrics 
-    for metric_name, value in metrics.items():
-        print(f"   {metric_name}: {value:.4f}")
+    with open("init-metrics.txt", "a") as f:
+        for metric_name, value in metrics.items():
+            f.write(f"   {metric_name}: {value:.4f}\n")
     
     # Pasul 9: Salvare model
     filepath= f"{model.name}.keras"

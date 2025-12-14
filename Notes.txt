@@ -15,4 +15,11 @@
                       - caseta de output trebuie populata doar pentru scriptul pt care s a rulat simularea. 
                       - la cancelation vreau sa am posibilitatea sa rulez din nou simularea. Doar cand simularea s a terminat cu succes se va opri butonul de run 
 
-                      
+- modificare logica backend - adaugarea metricilor modelului/retelei initiale (3 metrici: init_model_acc, clean_acc, poison_acc) la final results
+                            - gasire data protection asupra modelului (conditia de alegere a functiei de agregare)
+
+
+- modificare frontend - reordonarea in platforma a simularilor (drag & drop)
+                      - double-click => rename pe o simulare 
+                      - drag & drop simulare de la un proiect la altul 
+                      - ! reordonarea code_cell si output_cell: code_cell in centru-stanga si output_cell in centru-dreapta. 

@@ -210,35 +210,35 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             return
         
         # ========== STEP 6: Train model WITH GPU ==========
-        train_script = Path(__file__).parent / "train_model.py"
-        cmd = f"{conda_activate} && python {train_script} {template_path} {model_path}"
-        result = subprocess.run(
-            cmd, 
-            shell=True, 
-            capture_output=True, 
-            text=True, 
-            executable="/bin/bash", 
-            timeout=600,
-            env=env  # Same GPU environment
-        )
+        # train_script = Path(__file__).parent / "train_model.py"
+        # cmd = f"{conda_activate} && python {train_script} {template_path} {model_path}"
+        # result = subprocess.run(
+        #     cmd, 
+        #     shell=True, 
+        #     capture_output=True, 
+        #     text=True, 
+        #     executable="/bin/bash", 
+        #     timeout=600,
+        #     env=env  # Same GPU environment
+        # )
 
-        if result.returncode != 0:
-            error_msg = f"Model training failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
-            app.logger.error(error_msg)
-            return
+        # if result.returncode != 0:
+        #     error_msg = f"Model training failed: {result.stderr}\nStdout: {result.stdout}"
+        #     shared_simulations[task_id] = {"status": "error", "message": error_msg}
+        #     app.logger.error(error_msg)
+        #     return
 
-        shared_simulations[task_id] = {
-            "status": "running", 
-            "step": 3, 
-            "message": f"Downloading data on {gpu_info}...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
-        }
+        # shared_simulations[task_id] = {
+        #     "status": "running", 
+        #     "step": 3, 
+        #     "message": f"Downloading data on {gpu_info}...", 
+        #     "pid": process_pid,
+        #     "gpu_id": gpu_id
+        # }
         
-        # Check for cancellation
-        if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
-            raise InterruptedError("Simulation cancelled by user")
+        # # Check for cancellation
+        # if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
+        #     raise InterruptedError("Simulation cancelled by user")
 
         # ========== STEP 7: Download data ==========
         cmd = f"{conda_activate} && cd {user_dir} && python -c 'from template_code import download_data; download_data(\"clean_data\")'"
