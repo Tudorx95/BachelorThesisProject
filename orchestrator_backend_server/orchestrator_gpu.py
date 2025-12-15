@@ -180,9 +180,40 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             "pid": process_pid,
             "gpu_id": gpu_id
         }
+
+        # ========== STEP 4.5: Verify template structure ==========
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 2, 
+            "message": "Verifying template structure...", 
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+        
+        conda_activate = f"source {CONDA_BASE}/bin/activate {conda_env}"
+
+        # Verify template before execution
+        verify_script = Path(__file__).parent / "verify_template.py"
+        cmd_verify = f" {conda_activate} && cd {user_dir} && python {verify_script}"
+        result_verify = subprocess.run(
+            cmd_verify, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            executable="/bin/bash", 
+            timeout=60
+        )
+        
+        if result_verify.returncode != 0:
+            error_msg = f"Template verification failed: {result_verify.stderr}\nStdout: {result_verify.stdout}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            app.logger.error(error_msg)
+            return
+        
+        app.logger.info(f"[{task_id}] ✓ Template verification passed")
         
         # ========== STEP 5: Execute template code WITH GPU ==========
-        conda_activate = f"source {CONDA_BASE}/bin/activate {conda_env}"
+        
         
         # Set CUDA_VISIBLE_DEVICES for this subprocess
         env = os.environ.copy()
@@ -209,36 +240,54 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
         
-        # ========== STEP 6: Train model WITH GPU ==========
-        # train_script = Path(__file__).parent / "train_model.py"
-        # cmd = f"{conda_activate} && python {train_script} {template_path} {model_path}"
-        # result = subprocess.run(
-        #     cmd, 
-        #     shell=True, 
-        #     capture_output=True, 
-        #     text=True, 
-        #     executable="/bin/bash", 
-        #     timeout=600,
-        #     env=env  # Same GPU environment
-        # )
-
-        # if result.returncode != 0:
-        #     error_msg = f"Model training failed: {result.stderr}\nStdout: {result.stdout}"
-        #     shared_simulations[task_id] = {"status": "error", "message": error_msg}
-        #     app.logger.error(error_msg)
-        #     return
-
-        # shared_simulations[task_id] = {
-        #     "status": "running", 
-        #     "step": 3, 
-        #     "message": f"Downloading data on {gpu_info}...", 
-        #     "pid": process_pid,
-        #     "gpu_id": gpu_id
-        # }
+        # ========== STEP 6: Rename model file (.keras) ==========
+        app.logger.info(f"[{task_id}] Looking for model file to rename...")
         
-        # # Check for cancellation
-        # if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
-        #     raise InterruptedError("Simulation cancelled by user")
+        # Find the model file created by template_code.py
+        # It could be saved as {model.name}.keras (e.g., "sequential.keras", "resnet18.keras")
+        possible_model_files = list(user_dir.glob("*.keras"))
+        
+        if not possible_model_files:
+            error_msg = "No .keras model file found after template execution"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            app.logger.error(error_msg)
+            return
+        
+        # Get the first .keras file (should be the one created by template)
+        source_model = possible_model_files[0]
+        
+        # Target name from config
+        target_model = model_path  # Already defined as: user_dir / f"{config['NN_NAME']}.keras"
+        
+        # Rename if necessary
+        if source_model != target_model:
+            app.logger.info(f"[{task_id}] Renaming model: {source_model.name} → {target_model.name}")
+            shutil.move(str(source_model), str(target_model))
+            app.logger.info(f"[{task_id}] ✓ Model renamed successfully")
+        else:
+            app.logger.info(f"[{task_id}] ✓ Model already has correct name: {target_model.name}")
+        
+        # Verify the model file exists with correct name
+        if not target_model.exists():
+            error_msg = f"Model file not found after rename: {target_model}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            app.logger.error(error_msg)
+            return
+        
+        app.logger.info(f"[{task_id}] ✓ Model ready: {target_model.name} ({target_model.stat().st_size / 1024 / 1024:.2f} MB)")
+
+
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 3, 
+            "message": f"Downloading data on {gpu_info}...", 
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+        
+        # Check for cancellation
+        if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
+            raise InterruptedError("Simulation cancelled by user")
 
         # ========== STEP 7: Download data ==========
         cmd = f"{conda_activate} && cd {user_dir} && python -c 'from template_code import download_data; download_data(\"clean_data\")'"

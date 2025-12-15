@@ -5,6 +5,54 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Colab Style Editor</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      // Suppress ResizeObserver errors from Monaco Editor
+      // Must be placed BEFORE React loads
+      (function() {
+        const resizeObserverLoopErrRe = /ResizeObserver loop/i;
+
+        // Override window.onerror
+        const originalOnError = window.onerror;
+        window.onerror = function(message, source, lineno, colno, error) {
+          if (typeof message === 'string' && resizeObserverLoopErrRe.test(message)) {
+            return true; // Suppress error
+          }
+          if (originalOnError) {
+            return originalOnError.apply(this, arguments);
+          }
+          return false;
+        };
+
+        // Override addEventListener for 'error' events
+        const originalAddEventListener = EventTarget.prototype.addEventListener;
+        EventTarget.prototype.addEventListener = function(type, listener, options) {
+          if (type === 'error') {
+            const wrappedListener = function(event) {
+              if (event.message && resizeObserverLoopErrRe.test(event.message)) {
+                event.stopImmediatePropagation();
+                event.preventDefault();
+                return;
+              }
+              return listener.apply(this, arguments);
+            };
+            return originalAddEventListener.call(this, type, wrappedListener, options);
+          }
+          return originalAddEventListener.call(this, type, listener, options);
+        };
+      })();
+
+      // Configure Monaco Editor globals to prevent worker errors
+      window.MonacoEnvironment = {
+        getWorkerUrl: function(moduleId, label) {
+          // Return empty for Python - it doesn't need workers
+          if (label === 'python') {
+            return 'data:text/javascript;charset=utf-8,' + encodeURIComponent('self.onmessage = function() {};');
+          }
+          // Use CDN for other languages if needed
+          return 'https://cdn.jsdelivr.net/npm/monaco-editor@0.45.0/min/vs/base/worker/workerMain.js';
+        }
+      };
+    </script>
   </head>
   <body>
     <div id="root"></div>

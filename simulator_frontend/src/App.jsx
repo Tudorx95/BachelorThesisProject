@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { SimulationProvider, useSimulation } from './context/SimulationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Sidebar from './components/Sidebar';
@@ -415,6 +416,117 @@ function AppContent() {
         }
     };
 
+    // Rename file
+    const handleRenameFile = async (fileId, newName) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/${fileId}/rename`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (!response.ok) throw new Error('Failed to rename file');
+
+            const updatedFile = await response.json();
+
+            const updatedProjects = projects.map(p => ({
+                ...p,
+                files: p.files.map(f =>
+                    f.id === fileId ? { ...f, name: updatedFile.name } : f
+                )
+            }));
+
+            setProjects(updatedProjects);
+        } catch (error) {
+            console.error('Error renaming file:', error);
+            alert('Failed to rename file');
+        }
+    };
+
+    // Reorder files
+    const handleReorderFiles = async (updates) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/reorder`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({ updates })
+            });
+
+            if (!response.ok) throw new Error('Failed to reorder files');
+
+            // Optimistically update UI
+            const updatedProjects = projects.map(project => {
+                const updatedFiles = [...project.files];
+
+                // Apply order updates
+                updates.forEach(update => {
+                    const fileIndex = updatedFiles.findIndex(f => f.id === update.file_id);
+                    if (fileIndex !== -1) {
+                        updatedFiles[fileIndex] = { ...updatedFiles[fileIndex], order: update.new_order };
+                    }
+                });
+
+                // Sort by order
+                updatedFiles.sort((a, b) => a.order - b.order);
+
+                return { ...project, files: updatedFiles };
+            });
+
+            setProjects(updatedProjects);
+        } catch (error) {
+            console.error('Error reordering files:', error);
+            alert('Failed to reorder files');
+            // Reload projects to get correct state from server
+            loadProjects();
+        }
+    };
+
+    // Move file to different project
+    const handleMoveFile = async (fileId, newProjectId, newOrder) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/${fileId}/move`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    new_project_id: newProjectId,
+                    new_order: newOrder
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to move file');
+
+            const updatedFile = await response.json();
+
+            // Remove file from old project and add to new project
+            const updatedProjects = projects.map(project => {
+                if (project.id === newProjectId) {
+                    // Add file to new project
+                    const newFiles = [...project.files, updatedFile];
+                    newFiles.sort((a, b) => a.order - b.order);
+                    return { ...project, files: newFiles };
+                } else {
+                    // Remove file from old project
+                    return {
+                        ...project,
+                        files: project.files.filter(f => f.id !== fileId)
+                    };
+                }
+            });
+
+            setProjects(updatedProjects);
+
+            // Update active project if file was moved
+            if (activeFileId === fileId) {
+                setActiveProjectId(newProjectId);
+            }
+        } catch (error) {
+            console.error('Error moving file:', error);
+            alert('Failed to move file');
+            // Reload projects to get correct state from server
+            loadProjects();
+        }
+    };
+
     // Select project
     const handleSelectProject = (projectId) => {
         setActiveProjectId(projectId);
@@ -822,7 +934,7 @@ function AppContent() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
             <Sidebar
                 isOpen={isSidebarOpen}
                 projects={projects}
@@ -835,6 +947,9 @@ function AppContent() {
                 onCreateProject={handleCreateProject}
                 onCreateFile={handleCreateFile}
                 onShowMultiExport={() => setShowMultiExport(true)}
+                onReorderFiles={handleReorderFiles}
+                onRenameFile={handleRenameFile}
+                onMoveFile={handleMoveFile}
             />
             <div className="flex-1 flex flex-col">
                 <TopBar
@@ -845,10 +960,11 @@ function AppContent() {
                     onShowComparePage={() => setShowComparePage(true)}
                     activeProjectId={activeProjectId}
                 />
-                <div className="flex-1 overflow-auto p-6">
-                    <div className="max-w-5xl mx-auto space-y-4">
-                        {activeFile ? (
-                            <>
+                <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900">
+                    {activeFile ? (
+                        <div className="h-full flex gap-4">
+                            {/* CodeCell - always visible, takes full width if no output */}
+                            <div className={`flex flex-col ${(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) ? 'w-1/2' : 'w-full max-w-5xl mx-auto'}`}>
                                 <CodeCell
                                     content={activeFile.content || ''}
                                     handleContentChange={handleContentChange}
@@ -856,8 +972,11 @@ function AppContent() {
                                     isRunning={activeFileSimState.isRunning}
                                     isCompleted={completedSimulations[activeFileId]}
                                 />
-                                {/* Afișăm OutputCell doar dacă există output SAU simulare activă pentru ACEST fișier */}
-                                {(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) && (
+                            </div>
+
+                            {/* OutputCell - appears on the right when there's output or simulation running */}
+                            {(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) && (
+                                <div className="w-1/2 flex flex-col">
                                     <OutputCell
                                         output={activeFile.output || ''}
                                         isLoading={activeFileSimState.isRunning}
@@ -866,17 +985,17 @@ function AppContent() {
                                         isCancelling={activeFileSimState.isCancelling}
                                         fileName={activeFile.name}
                                     />
-                                )}
-                            </>
-                        ) : (
-                            <div className="text-center py-20">
-                                <p className="text-gray-500 text-lg">No file selected</p>
-                                <p className="text-gray-400 text-sm mt-2">
-                                    Create a new project and file to get started
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20">
+                            <p className="text-gray-500 dark:text-gray-400 text-lg">No file selected</p>
+                            <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                                Create a new project and file to get started
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -910,10 +1029,12 @@ function AppContent() {
 
 export default function App() {
     return (
-        <AuthProvider>
-            <SimulationProvider>
-                <AppContent />
-            </SimulationProvider>
-        </AuthProvider>
+        <ThemeProvider>
+            <AuthProvider>
+                <SimulationProvider>
+                    <AppContent />
+                </SimulationProvider>
+            </AuthProvider>
+        </ThemeProvider>
     );
 }

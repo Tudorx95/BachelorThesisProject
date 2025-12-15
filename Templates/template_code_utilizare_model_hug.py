@@ -275,7 +275,7 @@ def train_neural_network(
 
 def get_model_weights(model: tf.keras.Model):
     """Extrage ponderile modelului sub formă de listă de array-uri numpy."""
-    return [layer.numpy() for layer in model.trainable_weights]
+    return model.get_weights()
 
 
 def set_model_weights(model: tf.keras.Model, weights) -> None:
@@ -555,63 +555,63 @@ if __name__ == "__main__":
     for metric_name, value in metrics_before.items():
         print(f"      {metric_name}: {value:.4f}")
     
-    # Pasul 5: Continuare antrenare (fine-tuning)
-    print("\n[Pasul 5] Continuare antrenare (fine-tuning cu 5 epoci)...")
-    print("   ℹ️  Modelul este deja antrenat - facem doar ajustări fine")
+    # # Pasul 5: Continuare antrenare (fine-tuning)
+    # print("\n[Pasul 5] Continuare antrenare (fine-tuning cu 5 epoci)...")
+    # print("   ℹ️  Modelul este deja antrenat - facem doar ajustări fine")
     
-    # Opțional: Reduce learning rate pentru fine-tuning
-    model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),  # Learning rate mai mic
-        loss='categorical_crossentropy',
-        metrics=['accuracy']
-    )
+    # # Opțional: Reduce learning rate pentru fine-tuning
+    # model.compile(
+    #     optimizer=tf.keras.optimizers.Adam(learning_rate=1e-4),  # Learning rate mai mic
+    #     loss='categorical_crossentropy',
+    #     metrics=['accuracy']
+    # )
     
-    history = train_neural_network(
-        model=model,
-        train_dataset=train_ds,
-        validation_dataset=test_ds,
-        epochs=5,  # Puține epoci pentru fine-tuning
-        verbose=1
-    )
+    # history = train_neural_network(
+    #     model=model,
+    #     train_dataset=train_ds,
+    #     validation_dataset=test_ds,
+    #     epochs=5,  # Puține epoci pentru fine-tuning
+    #     verbose=1
+    # )
     
-    # Pasul 6: Evaluare DUPĂ antrenare suplimentară
-    print("\n[Pasul 6] Evaluare model DUPĂ fine-tuning...")
-    metrics_after = calculate_metrics(model, test_ds)
-    print("   Metrici finale:")
-    for metric_name, value in metrics_after.items():
-        print(f"      {metric_name}: {value:.4f}")
+    # # Pasul 6: Evaluare DUPĂ antrenare suplimentară
+    # print("\n[Pasul 6] Evaluare model DUPĂ fine-tuning...")
+    # metrics_after = calculate_metrics(model, test_ds)
+    # print("   Metrici finale:")
+    # for metric_name, value in metrics_after.items():
+    #     print(f"      {metric_name}: {value:.4f}")
     
-    # Comparație
-    print("\n   📈 Îmbunătățire:")
-    for metric_name in metrics_before.keys():
-        diff = metrics_after[metric_name] - metrics_before[metric_name]
-        symbol = "📈" if diff > 0 else "📉" if diff < 0 else "➡️"
-        print(f"      {metric_name}: {diff:+.4f} {symbol}")
+    # # Comparație
+    # print("\n   📈 Îmbunătățire:")
+    # for metric_name in metrics_before.keys():
+    #     diff = metrics_after[metric_name] - metrics_before[metric_name]
+    #     symbol = "📈" if diff > 0 else "📉" if diff < 0 else "➡️"
+    #     print(f"      {metric_name}: {diff:+.4f} {symbol}")
     
-    # Pasul 7: Extragere ponderi
-    print("\n[Pasul 7] Extragere ponderi...")
-    weights = get_model_weights(model)
-    print(f"   Număr de layere cu ponderi: {len(weights)}")
+    # # Pasul 7: Extragere ponderi
+    # print("\n[Pasul 7] Extragere ponderi...")
+    # weights = get_model_weights(model)
+    # print(f"   Număr de layere cu ponderi: {len(weights)}")
     
-    # Pasul 8: Salvare model actualizat
+    # # Pasul 8: Salvare model actualizat
     print("\n[Pasul 8] Salvare model actualizat...")
-    filepath = f"{model.name}_finetuned.keras"
+    filepath = f"{model.name}_.keras"
     save_model_config(model, filepath)
     
-    print("\n" + "=" * 70)
-    print("✓ FINE-TUNING FINALIZAT CU SUCCES!")
-    print("=" * 70)
-    print(f"\n📦 Model actualizat salvat: {filepath}")
-    print(f"📊 Parametri: {model.count_params():,}")
+    # print("\n" + "=" * 70)
+    # print("✓ FINE-TUNING FINALIZAT CU SUCCES!")
+    # print("=" * 70)
+    # print(f"\n📦 Model actualizat salvat: {filepath}")
+    # print(f"📊 Parametri: {model.count_params():,}")
     
-    print("\n💡 Următorii pași:")
-    print("   1. (Opțional) Upload modelul actualizat pe HuggingFace:")
-    print(f"      python upload_to_huggingface.py {filepath} {HUGGINGFACE_REPO_ID}")
-    print("\n   2. Folosește modelul în simulator-ul FL")
+    # print("\n💡 Următorii pași:")
+    # print("   1. (Opțional) Upload modelul actualizat pe HuggingFace:")
+    # print(f"      python upload_to_huggingface.py {filepath} {HUGGINGFACE_REPO_ID}")
+    # print("\n   2. Folosește modelul în simulator-ul FL")
     
-    print("\n🔬 Pentru teste de data poisoning:")
-    print("   • Modelul pre-antrenat este ideal ca baseline")
-    print("   • Testează robustețea la atacuri backdoor")
-    print("   • Framework: ART (Adversarial Robustness Toolbox)")
+    # print("\n🔬 Pentru teste de data poisoning:")
+    # print("   • Modelul pre-antrenat este ideal ca baseline")
+    # print("   • Testează robustețea la atacuri backdoor")
+    # print("   • Framework: ART (Adversarial Robustness Toolbox)")
     
-    print("\nFinish")
+    # print("\nFinish")

@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS files (
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -49,6 +50,7 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_files_project_id ON files(project_id);
+CREATE INDEX idx_files_project_order ON files(project_id, "order");
 CREATE INDEX idx_simulation_results_user_id ON simulation_results(user_id);
 CREATE INDEX idx_simulation_results_task_id ON simulation_results(task_id);
 CREATE INDEX idx_simulation_results_status ON simulation_results(status);
@@ -78,8 +80,8 @@ INSERT INTO projects (user_id, name, description) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insert demo file
-INSERT INTO files (project_id, name, content) VALUES 
-(1, 'Welcome.md', '# Welcome to FL Simulator!
+INSERT INTO files (project_id, name, "order", content) VALUES
+(1, 'Welcome.md', 0, '# Welcome to FL Simulator!
 
 ## Getting Started
 
