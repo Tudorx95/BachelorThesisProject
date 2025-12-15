@@ -154,9 +154,12 @@ export default function MultiExportCSV({ onClose, token, projects }) {
                 'Init Accuracy',
                 'Clean Accuracy',
                 'Poisoned Accuracy',
+                'Poisoned + DP Protection Accuracy',
                 'Accuracy Drop (Clean - Poisoned)',
                 'Drop (Clean - Init)',
                 'Drop (Poisoned - Init)',
+                'Drop (Poisoned DP - Init)',
+                'DP Protection Method',
                 'GPU Used',
                 'Summary'
             ];
@@ -208,9 +211,12 @@ export default function MultiExportCSV({ onClose, token, projects }) {
                     analysis.init_accuracy?.toFixed(4) || 'N/A',
                     analysis.clean_accuracy?.toFixed(4) || 'N/A',
                     analysis.poisoned_accuracy?.toFixed(4) || 'N/A',
+                    analysis.poisoned_dp_accuracy?.toFixed(4) || 'N/A',
                     analysis.accuracy_drop?.toFixed(4) || 'N/A',
                     analysis.drop_clean_init?.toFixed(4) || 'N/A',
                     analysis.drop_poison_init?.toFixed(4) || 'N/A',
+                    analysis.drop_poison_dp_init?.toFixed(4) || 'N/A',
+                    analysis.data_poison_protection_method || 'N/A',
                     analysis.gpu_used || 'N/A',
                     (results.summary || 'N/A').replace(/"/g, '""') // Escape quotes in summary
                 ];

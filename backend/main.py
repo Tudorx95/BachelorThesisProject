@@ -190,6 +190,7 @@ class SimulationConfig(BaseModel):
     poison_operation: str = "noise"
     poison_intensity: float = 0.1
     poison_percentage: float = 0.2
+    data_poison_protection: str = "fedavg"
 
 class RunRequest(BaseModel):
     filename: str
@@ -313,7 +314,8 @@ def send_simulation_to_orchestrator(task_id: str, template_code: str, config: Si
             "strategy": config.strategy,
             "poison_operation": config.poison_operation,
             "poison_intensity": config.poison_intensity,
-            "poison_percentage": config.poison_percentage
+            "poison_percentage": config.poison_percentage,
+            "data_poison_protection": config.data_poison_protection
         }
     }
     
@@ -749,6 +751,8 @@ async def run_code(request: RunRequest, background_tasks: BackgroundTasks):
         output += f"  • Operation: {config.poison_operation}\n"
         output += f"  • Intensity: {config.poison_intensity}\n"
         output += f"  • Percentage: {config.poison_percentage}\n\n"
+        output += f"🛡️ Data Poison Protection:\n"
+        output += f"  • Aggregation Method: {config.data_poison_protection}\n\n"
         
         # Store task info
         active_tasks[task_id] = {

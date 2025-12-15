@@ -162,9 +162,9 @@ TEMPLATE_FUNCS = TemplateFunctions()
 # ENHANCED FEDERATED SERVER
 # ============================================================================
 class EnhancedFederatedServer:
-    def __init__(self, num_clients, num_malicious, nn_path, nn_name, data_folder, alternative_data, 
-                 rounds, r, strategy="first", data_poisoning=False, use_template=False, 
-                 test_json_path=None):
+    def __init__(self, num_clients, num_malicious, nn_path, nn_name, data_folder, alternative_data,
+                 rounds, r, strategy="first", data_poisoning=False, use_template=False,
+                 test_json_path=None, data_poison_protection='fedavg'):
         self.num_clients = num_clients
         self.num_malicious = num_malicious
         self.nn_path = nn_path
@@ -176,6 +176,7 @@ class EnhancedFederatedServer:
         self.strategy = strategy
         self.data_poisoning = data_poisoning
         self.use_template = use_template
+        self.data_poison_protection = data_poison_protection
         
         # JSON Metrics Manager
         self.test_json_path = test_json_path
@@ -714,10 +715,9 @@ class EnhancedFederatedServer:
             honest_updates = [u for u in updates if not self._is_client_malicious(u['client_id'])]
             malicious_updates = [u for u in updates if self._is_client_malicious(u['client_id'])]
             
-            # AGREGARE METRICI - funcție separată (mean implicit)
-            # Poți schimba metoda aici: 'mean', 'median', 'weighted_mean'
-            aggregation_method = 'mean'  # Schimbă acest parametru pentru testare manuală
-            
+            # AGREGARE METRICI - folosește metoda selectată de utilizator
+            aggregation_method = self.data_poison_protection
+
             overall_metrics = self._aggregate_metrics(updates, aggregation_method)
             honest_metrics = self._aggregate_metrics(honest_updates, aggregation_method) if honest_updates else None
             malicious_metrics = self._aggregate_metrics(malicious_updates, aggregation_method) if malicious_updates else None
@@ -1142,11 +1142,14 @@ def main():
     parser.add_argument('alternative_data', type=str, help='Alternative data folder')
     parser.add_argument('R', type=int, help='Rounds using alternative data')    # important only for _get_data_path (choosing the dataset for that round)
     parser.add_argument('ROUNDS', type=int, help='Total training rounds')
-    parser.add_argument('--strategy', type=str, default='first', 
+    parser.add_argument('--strategy', type=str, default='first',
                        choices=['first', 'last', 'alternate', 'alternate_data'],
                        help='Malicious client distribution strategy')
-    parser.add_argument('--data_poisoning', action='store_true', 
+    parser.add_argument('--data_poisoning', action='store_true',
                        help='Enable data poisoning attack detection and logging')
+    parser.add_argument('--data_poison_protection', type=str, default='fedavg',
+                       choices=['fedavg', 'krum', 'trimmed_mean', 'median', 'trimmed_mean_krum', 'random'],
+                       help='Aggregation method for data poison protection')
     parser.add_argument('--template', type=str, default=None,
                        help='Path to template_code.py for importing custom functions')
     
@@ -1177,12 +1180,12 @@ def main():
     logger.info(f"Starting enhanced simulation{poison_status}: N={args.N}, M={args.M}, Strategy={args.strategy}, Rounds={args.ROUNDS}")
     logger.info(f"Test metrics will be saved to: {args.test_file}")
     
-    model_name = Path(args.NN_NAME_PATH).stem   
-    print(f"Model_Name: {model_name}") 
-    server = EnhancedFederatedServer(args.N, args.M, args.NN_NAME_PATH, model_name, 
-                                    args.data_folder, args.alternative_data, 
+    model_name = Path(args.NN_NAME_PATH).stem
+    print(f"Model_Name: {model_name}")
+    server = EnhancedFederatedServer(args.N, args.M, args.NN_NAME_PATH, model_name,
+                                    args.data_folder, args.alternative_data,
                                     args.ROUNDS, args.R, args.strategy, args.data_poisoning,
-                                    use_template, args.test_file)
+                                    use_template, args.test_file, args.data_poison_protection)
     
     clients = []
     client_threads = []

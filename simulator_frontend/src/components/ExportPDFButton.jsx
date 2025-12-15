@@ -144,11 +144,17 @@ export default function ExportPDFButton({ results, fileName }) {
                 y += 6;
                 pdf.text(`Poisoned Accuracy: ${results.analysis.poisoned_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
+                pdf.text(`Poisoned + DP Protection Accuracy: ${results.analysis.poisoned_dp_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
                 pdf.text(`Drop (Clean - Poisoned): ${results.analysis.accuracy_drop?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Drop (Clean - Init): ${results.analysis.drop_clean_init?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Drop (Poisoned - Init): ${results.analysis.drop_poison_init?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Drop (Poisoned DP - Init): ${results.analysis.drop_poison_dp_init?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`DP Protection Method: ${results.analysis.data_poison_protection_method || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`GPU Used: ${results.analysis.gpu_used || 'N/A'}`, 25, y);
                 y += 12;

@@ -357,7 +357,8 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             f"{user_dir / 'clean_data'} "
             f"{config['R']} "
             f"{config['ROUNDS']} "
-            f"--strategy {config['strategy']}"
+            f"--strategy {config['strategy']} "
+            f"--data_poison_protection fedavg"
         )
 
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
@@ -396,7 +397,8 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             f"{config['R']} "
             f"{config['ROUNDS']} "
             f"--strategy {config['strategy']} "
-            f"--data_poisoning"
+            f"--data_poisoning "
+            f"--data_poison_protection fedavg"
         )
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
@@ -404,12 +406,51 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             shared_simulations[task_id] = {"status": "error", "message": error_msg}
             app.logger.error(error_msg)
             return
-        
-        # ========== STEP 7: Generate results ==========
+
+        # ========== STEP 7: FL simulation with Data Poison Protection ==========
         shared_simulations[task_id] = {
-            "status": "running", 
-            "step": 7, 
-            "message": "Generating analysis...", 
+            "status": "running",
+            "step": 7,
+            "message": f"Running FL simulation (poisoned + DP protection) on {gpu_info}...",
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+
+        # Check cancellation
+        if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
+            raise InterruptedError("Simulation cancelled by user")
+
+        # Run poisoned FL simulation WITH Data Poison Protection
+        test_file_poisoned_dp = user_dir / "results" / "poisoned_dp_metrics.json"
+        test_file_poisoned_dp.parent.mkdir(parents=True, exist_ok=True)
+
+        cmd = (
+            f"{conda_activate} && "
+            f"python {fd_script} "
+            f"{test_file_poisoned_dp} "                  # test_file (full path)
+            f"{config['N']} "
+            f"{config['M']} "
+            f"{model_path} "                        # NN_NAME_PATH (full model path)
+            f"{user_dir / 'clean_data_poisoned'} "
+            f"{user_dir / 'clean_data'} "
+            f"{config['R']} "
+            f"{config['ROUNDS']} "
+            f"--strategy {config['strategy']} "
+            f"--data_poisoning "
+            f"--data_poison_protection {config.get('data_poison_protection', 'fedavg')}"
+        )
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
+        if result.returncode != 0:
+            error_msg = f"Poisoned DP FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            app.logger.error(error_msg)
+            return
+
+        # ========== STEP 8: Generate results ==========
+        shared_simulations[task_id] = {
+            "status": "running",
+            "step": 8,
+            "message": "Generating analysis...",
             "pid": process_pid,
             "gpu_id": gpu_id
         }
@@ -428,9 +469,17 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         else:
             app.logger.error(f"Poisoned results file not found or empty: {test_file_poisoned}")
             poisoned_results = {"final_accuracy": 0.0}
-        
+
+        if test_file_poisoned_dp.exists() and test_file_poisoned_dp.stat().st_size > 0:
+            with open(test_file_poisoned_dp) as f:
+                poisoned_dp_results = json.load(f)
+        else:
+            app.logger.error(f"Poisoned DP results file not found or empty: {test_file_poisoned_dp}")
+            poisoned_dp_results = {"final_accuracy": 0.0}
+
         clean_accuracy = clean_results.get('final_accuracy', 0)
         poisoned_accuracy = poisoned_results.get('final_accuracy', 0)
+        poisoned_dp_accuracy = poisoned_dp_results.get('final_accuracy', 0)
         
 
         # If final_accuracy is 0 or missing, extract from last round
@@ -439,12 +488,18 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             if history and len(history) > 0:
                 clean_accuracy = history[-1].get('accuracy', 0)
                 app.logger.info(f"[{task_id}] Extracted clean_accuracy from round_metrics_history: {clean_accuracy}")
-        
+
         if poisoned_accuracy == 0 and 'round_metrics_history' in poisoned_results:
             history = poisoned_results['round_metrics_history']
             if history and len(history) > 0:
                 poisoned_accuracy = history[-1].get('accuracy', 0)
                 app.logger.info(f"[{task_id}] Extracted poisoned_accuracy from round_metrics_history: {poisoned_accuracy}")
+
+        if poisoned_dp_accuracy == 0 and 'round_metrics_history' in poisoned_dp_results:
+            history = poisoned_dp_results['round_metrics_history']
+            if history and len(history) > 0:
+                poisoned_dp_accuracy = history[-1].get('accuracy', 0)
+                app.logger.info(f"[{task_id}] Extracted poisoned_dp_accuracy from round_metrics_history: {poisoned_dp_accuracy}")
         
         # ========== STEP: Citire Init Accuracy ==========
         init_accuracy = 0.0
@@ -462,15 +517,19 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
                 app.logger.warning(f"[{task_id}] Could not read JSON: {e}")
         # here are the final results
         analysis = {
-            'init_accuracy': init_accuracy,                        # NOU!
+            'init_accuracy': init_accuracy,
             'clean_accuracy': clean_accuracy,
             'poisoned_accuracy': poisoned_accuracy,
-            'accuracy_drop': clean_accuracy - poisoned_accuracy,   # Old (păstrat)
-            'drop_clean_init': clean_accuracy - init_accuracy,     # NOU!
-            'drop_poison_init': poisoned_accuracy - init_accuracy, # NOU!
+            'poisoned_dp_accuracy': poisoned_dp_accuracy,
+            'accuracy_drop': clean_accuracy - poisoned_accuracy,
+            'drop_clean_init': clean_accuracy - init_accuracy,
+            'drop_poison_init': poisoned_accuracy - init_accuracy,
+            'drop_poison_dp_init': poisoned_dp_accuracy - init_accuracy,
             'clean_metrics': clean_results,
             'poisoned_metrics': poisoned_results,
-            'gpu_used': gpu_info
+            'poisoned_dp_metrics': poisoned_dp_results,
+            'gpu_used': gpu_info,
+            'data_poison_protection_method': config.get('data_poison_protection', 'fedavg')
         }
 
         analysis_path = user_dir / "results" / "analysis.json"
@@ -483,9 +542,12 @@ GPU: {gpu_info}
 Init Accuracy: {analysis['init_accuracy']:.4f}
 Clean Accuracy: {analysis['clean_accuracy']:.4f}
 Poisoned Accuracy: {analysis['poisoned_accuracy']:.4f}
+Data Poison Protection Accuracy: {analysis['poisoned_dp_accuracy']:.4f}
 Drop (Clean - Poisoned): {analysis['accuracy_drop']:.4f}
 Drop (Clean - Init): {analysis['drop_clean_init']:.4f}
 Drop (Poisoned - Init): {analysis['drop_poison_init']:.4f}
+Drop (Poisoned_DP - Init): {analysis['drop_poison_dp_init']:.4f}
+Data Poison Protection Method: {analysis['data_poison_protection_method']}
 """
         
         summary_path = user_dir / "results" / "summary.txt"

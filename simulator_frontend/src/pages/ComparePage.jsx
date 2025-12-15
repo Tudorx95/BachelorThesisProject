@@ -331,6 +331,12 @@ function ResultBox({ title, data }) {
                             {analysis.poisoned_accuracy?.toFixed(4) || 'N/A'}
                         </span>
                     </div>
+                    <div className="flex justify-between p-2 bg-teal-50 dark:bg-teal-900/20 rounded border border-teal-200 dark:border-teal-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Poisoned + DP Protection Accuracy:</strong>
+                        <span className="font-mono text-teal-700 dark:text-teal-400 text-base font-bold">
+                            {analysis.poisoned_dp_accuracy?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
                     <div className="flex justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
                         <strong className="text-gray-700 dark:text-gray-300">Drop (Clean - Poisoned):</strong>
                         <span className="font-mono text-orange-700 dark:text-orange-400 text-base font-bold">
@@ -347,6 +353,18 @@ function ResultBox({ title, data }) {
                         <strong className="text-gray-700 dark:text-gray-300">Drop (Poisoned - Init):</strong>
                         <span className="font-mono text-pink-700 dark:text-pink-400 text-base font-bold">
                             {analysis.drop_poison_init?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded border border-indigo-200 dark:border-indigo-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Drop (Poisoned DP - Init):</strong>
+                        <span className="font-mono text-indigo-700 dark:text-indigo-400 text-base font-bold">
+                            {analysis.drop_poison_dp_init?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-cyan-50 dark:bg-cyan-900/20 rounded border border-cyan-200 dark:border-cyan-800">
+                        <strong className="text-gray-700 dark:text-gray-300">DP Protection Method:</strong>
+                        <span className="font-mono text-cyan-700 dark:text-cyan-400 text-base font-bold">
+                            {analysis.data_poison_protection_method || 'N/A'}
                         </span>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
