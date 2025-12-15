@@ -138,11 +138,17 @@ export default function ExportPDFButton({ results, fileName }) {
                 pdf.setFontSize(10);
                 pdf.setFont(undefined, 'normal');
 
+                pdf.text(`Init Accuracy: ${results.analysis.init_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
                 pdf.text(`Clean Accuracy: ${results.analysis.clean_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Poisoned Accuracy: ${results.analysis.poisoned_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
-                pdf.text(`Accuracy Drop: ${results.analysis.accuracy_drop?.toFixed(4) || 'N/A'}`, 25, y);
+                pdf.text(`Drop (Clean - Poisoned): ${results.analysis.accuracy_drop?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Drop (Clean - Init): ${results.analysis.drop_clean_init?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Drop (Poisoned - Init): ${results.analysis.drop_poison_init?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`GPU Used: ${results.analysis.gpu_used || 'N/A'}`, 25, y);
                 y += 12;

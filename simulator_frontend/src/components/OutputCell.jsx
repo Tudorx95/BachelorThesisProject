@@ -102,18 +102,18 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
     };
 
     return (
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
-            <div className="p-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
+            <div className="p-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex items-center justify-between flex-shrink-0">
                 <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-600">Output</span>
+                    <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Output</span>
                     {(isLoading || orchestratorStatus?.status === 'running') && (
-                        <span className="flex items-center gap-1 text-xs text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
+                        <span className="flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 px-2 py-1 rounded-full">
                             <TrendingUp className="w-3 h-3" />
                             {getProgressPercentage()}% Complete
                         </span>
                     )}
                     {orchestratorStatus?.status === 'completed' && (
-                        <span className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
+                        <span className="flex items-center gap-1 text-xs text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/30 px-2 py-1 rounded-full">
                             <CheckCircle className="w-3 h-3" />
                             Completed
                         </span>
@@ -150,17 +150,17 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                 )}
             </div>
 
-            <div className="p-4 bg-gray-900 text-gray-100 font-mono text-sm overflow-auto" style={{ minHeight: '300px', maxHeight: '600px' }}>
+            <div className="flex-1 p-4 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 font-mono text-sm overflow-auto">
                 {isLoading || orchestratorStatus?.status === 'running' ? (
                     <div className="space-y-4">
                         {/* Main Status Indicator */}
-                        <div className="flex items-center justify-center mb-6 p-4 bg-gray-800 rounded-lg">
-                            <Loader2 className="w-8 h-8 animate-spin text-blue-400 mr-3" />
+                        <div className="flex items-center justify-center mb-6 p-4 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-700">
+                            <Loader2 className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400 mr-3" />
                             <div>
-                                <p className="text-lg font-semibold text-blue-400">
+                                <p className="text-lg font-semibold text-blue-600 dark:text-blue-400">
                                     Simulation in Progress
                                 </p>
-                                <p className="text-xs text-gray-400 mt-1">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                                     Step {getCurrentStep()} of {steps.length}
                                     {orchestratorStatus?.message && ` - ${orchestratorStatus.message}`}
                                 </p>
@@ -183,16 +183,16 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                         </div>
 
                         {/* Overall Progress Bar */}
-                        <div className="mt-6 p-4 bg-gray-800 rounded-lg">
+                        <div className="mt-6 p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                             <div className="flex items-center justify-between mb-2">
-                                <span className="text-xs text-gray-400 font-semibold">
+                                <span className="text-xs text-gray-600 dark:text-gray-400 font-semibold">
                                     Overall Progress
                                 </span>
-                                <span className="text-xs text-blue-400 font-bold">
+                                <span className="text-xs text-blue-600 dark:text-blue-400 font-bold">
                                     {getProgressPercentage()}%
                                 </span>
                             </div>
-                            <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                                 <div
                                     className="bg-gradient-to-r from-blue-500 to-blue-400 h-3 rounded-full transition-all duration-500 ease-out"
                                     style={{ width: `${getProgressPercentage()}%` }}
@@ -202,22 +202,22 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Live Console Output Section */}
                         {output && (
-                            <div className="mt-4 p-3 bg-gray-800 rounded-lg border border-gray-700">
-                                <p className="text-xs text-gray-400 mb-2 font-semibold">Console Output:</p>
-                                <pre className="text-xs text-gray-300 whitespace-pre-wrap">{output}</pre>
+                            <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                                <p className="text-xs text-gray-600 dark:text-gray-400 mb-2 font-semibold">Console Output:</p>
+                                <pre className="text-xs text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{output}</pre>
                             </div>
                         )}
                     </div>
                 ) : orchestratorStatus?.status === 'cancelled' ? (
                     // Cancellation Status Display
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-4 bg-orange-900/30 border border-orange-700 rounded-lg">
-                            <XCircle className="w-8 h-8 text-orange-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 p-4 bg-orange-50 dark:bg-orange-900/30 border border-orange-300 dark:border-orange-700 rounded-lg">
+                            <XCircle className="w-8 h-8 text-orange-600 dark:text-orange-400 flex-shrink-0" />
                             <div>
-                                <h3 className="text-lg font-semibold text-orange-400">
+                                <h3 className="text-lg font-semibold text-orange-600 dark:text-orange-400">
                                     Simulation Cancelled
                                 </h3>
-                                <p className="text-sm text-gray-300 mt-1">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                                     The simulation was cancelled by user request at step {getCurrentStep()} of {steps.length}.
                                 </p>
                             </div>
@@ -225,7 +225,7 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Show completed steps */}
                         <div className="space-y-2">
-                            <p className="text-sm text-gray-400 font-semibold mb-2">Steps Completed Before Cancellation:</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-2">Steps Completed Before Cancellation:</p>
                             {steps.filter(step => step.id < getCurrentStep()).map(step => (
                                 <ProgressStep
                                     key={step.id}
@@ -240,20 +240,20 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                         </div>
 
                         {orchestratorStatus.message && (
-                            <div className="p-3 bg-gray-800 rounded-lg border border-orange-700/50">
-                                <p className="text-xs text-orange-400 font-semibold mb-1">Cancellation Details:</p>
-                                <p className="text-sm text-gray-300">{orchestratorStatus.message}</p>
+                            <div className="p-3 bg-orange-50 dark:bg-gray-800 rounded-lg border border-orange-300 dark:border-orange-700/50">
+                                <p className="text-xs text-orange-600 dark:text-orange-400 font-semibold mb-1">Cancellation Details:</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300">{orchestratorStatus.message}</p>
                             </div>
                         )}
                     </div>
                 ) : orchestratorStatus?.status === 'error' ? (
                     // Error Status Display
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-4 bg-red-900/30 border border-red-700 rounded-lg">
-                            <AlertCircle className="w-8 h-8 text-red-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/30 border border-red-300 dark:border-red-700 rounded-lg">
+                            <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 flex-shrink-0" />
                             <div>
-                                <h3 className="text-lg font-semibold text-red-400">Error Occurred</h3>
-                                <p className="text-sm text-gray-300 mt-1">
+                                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400">Error Occurred</h3>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                                     The simulation encountered an error at step {getCurrentStep()}.
                                 </p>
                             </div>
@@ -261,9 +261,9 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Error Message */}
                         {orchestratorStatus.message && (
-                            <div className="p-4 bg-red-900/20 border border-red-700/50 rounded-lg">
-                                <p className="text-xs text-red-400 font-semibold mb-2">Error Details:</p>
-                                <pre className="text-sm text-gray-300 whitespace-pre-wrap">
+                            <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700/50 rounded-lg">
+                                <p className="text-xs text-red-600 dark:text-red-400 font-semibold mb-2">Error Details:</p>
+                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                                     {orchestratorStatus.message}
                                 </pre>
                             </div>
@@ -271,7 +271,7 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Show steps that completed before error */}
                         <div className="space-y-2">
-                            <p className="text-sm text-gray-400 font-semibold mb-2">Progress Before Error:</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 font-semibold mb-2">Progress Before Error:</p>
                             {steps.map(step => (
                                 <ProgressStep
                                     key={step.id}
@@ -288,13 +288,13 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                 ) : orchestratorStatus?.status === 'completed' ? (
                     // Completion Status Display
                     <div className="space-y-4">
-                        <div className="flex items-center gap-3 p-4 bg-green-900/30 border border-green-700 rounded-lg">
-                            <CheckCircle className="w-8 h-8 text-green-400 flex-shrink-0" />
+                        <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg">
+                            <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400 flex-shrink-0" />
                             <div>
-                                <h3 className="text-lg font-semibold text-green-400">
+                                <h3 className="text-lg font-semibold text-green-600 dark:text-green-400">
                                     Simulation Completed Successfully!
                                 </h3>
-                                <p className="text-sm text-gray-300 mt-1">
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
                                     All {steps.length} steps completed without errors.
                                 </p>
                             </div>
@@ -302,7 +302,7 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Show all completed steps */}
                         <div className="space-y-2">
-                            <p className="text-sm text-green-400 font-semibold mb-2">Pipeline Summary:</p>
+                            <p className="text-sm text-green-600 dark:text-green-400 font-semibold mb-2">Pipeline Summary:</p>
                             {steps.map(step => (
                                 <ProgressStep
                                     key={step.id}
@@ -318,27 +318,27 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
 
                         {/* Console Output */}
                         {output && (
-                            <div className="p-3 bg-gray-800 rounded-lg border border-green-700/50">
-                                <p className="text-xs text-green-400 font-semibold mb-2">Console Output:</p>
-                                <pre className="text-sm text-gray-300 whitespace-pre-wrap">{output}</pre>
+                            <div className="p-3 bg-green-50 dark:bg-gray-800 rounded-lg border border-green-300 dark:border-green-700/50">
+                                <p className="text-xs text-green-600 dark:text-green-400 font-semibold mb-2">Console Output:</p>
+                                <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">{output}</pre>
                             </div>
                         )}
 
                         {/* Final Results */}
                         {orchestratorStatus.results_data && (
-                            <div className="mt-4 p-4 bg-gradient-to-br from-blue-900/30 to-purple-900/30 border border-blue-700 rounded-lg">
-                                <p className="text-blue-400 mb-3 font-semibold flex items-center gap-2">
+                            <div className="mt-4 p-4 bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 border border-blue-300 dark:border-blue-700 rounded-lg">
+                                <p className="text-blue-600 dark:text-blue-400 mb-3 font-semibold flex items-center gap-2">
                                     <TrendingUp className="w-4 h-4" />
                                     Final Results
                                 </p>
-                                <pre className="text-gray-300 text-xs p-3 bg-gray-800/50 rounded overflow-x-auto">
+                                <pre className="text-gray-700 dark:text-gray-300 text-xs p-3 bg-gray-100 dark:bg-gray-800/50 rounded overflow-x-auto">
                                     {orchestratorStatus.results_data.summary}
                                 </pre>
                                 <details className="mt-3">
-                                    <summary className="text-xs text-blue-400 cursor-pointer hover:text-blue-300 transition-colors">
+                                    <summary className="text-xs text-blue-600 dark:text-blue-400 cursor-pointer hover:text-blue-500 dark:hover:text-blue-300 transition-colors">
                                         View detailed analysis (JSON) →
                                     </summary>
-                                    <pre className="text-gray-300 text-xs mt-2 p-3 bg-gray-800/50 rounded overflow-x-auto">
+                                    <pre className="text-gray-700 dark:text-gray-300 text-xs mt-2 p-3 bg-gray-100 dark:bg-gray-800/50 rounded overflow-x-auto">
                                         {JSON.stringify(orchestratorStatus.results_data.analysis, null, 2)}
                                     </pre>
                                 </details>
@@ -347,7 +347,7 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                     </div>
                 ) : (
                     // Default output display (no simulation running)
-                    <pre className="whitespace-pre-wrap text-gray-300">{output || 'Ready to run simulation...'}</pre>
+                    <pre className="whitespace-pre-wrap text-gray-700 dark:text-gray-300">{output || 'Ready to run simulation...'}</pre>
                 )}
             </div>
         </div>
