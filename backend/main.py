@@ -24,7 +24,7 @@ logger = logging.getLogger(__name__)
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@db:5432/fl_db")
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour session
 
 # Orchestrator configuration
 ORCHESTRATOR_URL = "http://10.13.0.102:8000"  # IP-ul serverului ATM
@@ -43,7 +43,7 @@ app = FastAPI(title="FL Simulator API")
 # CORS configuration
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000"],
+    allow_origins=["http://localhost:3000", "http://frontend:3000", "http://10.13.170.3:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -78,20 +78,21 @@ class Project(Base):
 
 class File(Base):
     __tablename__ = "files"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=False)
     name = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    order = Column(Integer, default=0, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     project = relationship("Project", back_populates="files")
     simulation_results = relationship("SimulationResult", back_populates="file", cascade="all, delete-orphan")
 
 class SimulationResult(Base):
     __tablename__ = "simulation_results"
-    
+
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
@@ -99,10 +100,11 @@ class SimulationResult(Base):
     task_id = Column(String, unique=True, nullable=False, index=True)
     simulation_config = Column(JSON, nullable=False)
     results = Column(JSON, nullable=True)
+    output = Column(Text, nullable=True)  # Store console output
     status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
     completed_at = Column(DateTime, nullable=True)
-    
+
     file = relationship("File", back_populates="simulation_results")
 
 # Create tables
@@ -152,14 +154,29 @@ class FileCreate(BaseModel):
 class FileUpdate(BaseModel):
     content: str
 
+class FileRename(BaseModel):
+    name: str
+
+class FileReorder(BaseModel):
+    file_id: int
+    new_order: int
+
+class FilesReorderBulk(BaseModel):
+    updates: List[FileReorder]
+
+class FileMoveProject(BaseModel):
+    new_project_id: int
+    new_order: Optional[int] = None
+
 class FileResponse(BaseModel):
     id: int
     project_id: int
     name: str
     content: str
+    order: int
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
 
@@ -185,6 +202,7 @@ class SimulationResultCreate(BaseModel):
     task_id: str
     simulation_config: dict
     results: Optional[dict] = None
+    output: Optional[str] = None
     status: str = "pending"
 
 class SimulationResultResponse(BaseModel):
@@ -195,6 +213,7 @@ class SimulationResultResponse(BaseModel):
     task_id: str
     simulation_config: dict
     results: Optional[dict]
+    output: Optional[str]
     status: str
     created_at: datetime
     completed_at: Optional[datetime]
@@ -525,8 +544,8 @@ async def get_files(
     ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
-    files = db.query(File).filter(File.project_id == project_id).all()
+
+    files = db.query(File).filter(File.project_id == project_id).order_by(File.order).all()
     return files
 
 @app.post("/api/projects/{project_id}/files", response_model=FileResponse)
@@ -542,11 +561,15 @@ async def create_file(
     ).first()
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    
+
+    # Get max order for this project
+    max_order = db.query(File).filter(File.project_id == project_id).count()
+
     db_file = File(
         project_id=project_id,
         name=file.name,
-        content=file.content
+        content=file.content,
+        order=max_order
     )
     db.add(db_file)
     db.commit()
@@ -599,10 +622,105 @@ async def delete_file(
     ).first()
     if not file:
         raise HTTPException(status_code=404, detail="File not found")
-    
+
     db.delete(file)
     db.commit()
     return {"message": "File deleted successfully"}
+
+# NEW: File rename endpoint
+@app.patch("/api/files/{file_id}/rename", response_model=FileResponse)
+async def rename_file(
+    file_id: int,
+    rename_data: FileRename,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Rename a file"""
+    file = db.query(File).join(Project).filter(
+        File.id == file_id,
+        Project.user_id == current_user.id
+    ).first()
+    if not file:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    file.name = rename_data.name
+    file.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(file)
+    return file
+
+# NEW: File reorder endpoint (bulk update)
+@app.post("/api/files/reorder")
+async def reorder_files(
+    reorder_data: FilesReorderBulk,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reorder multiple files at once"""
+    try:
+        for update in reorder_data.updates:
+            file = db.query(File).join(Project).filter(
+                File.id == update.file_id,
+                Project.user_id == current_user.id
+            ).first()
+            if file:
+                file.order = update.new_order
+                file.updated_at = datetime.utcnow()
+
+        db.commit()
+        return {"message": "Files reordered successfully"}
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error reordering files: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to reorder files: {str(e)}")
+
+# NEW: Move file to different project
+@app.patch("/api/files/{file_id}/move", response_model=FileResponse)
+async def move_file_to_project(
+    file_id: int,
+    move_data: FileMoveProject,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Move a file from one project to another"""
+    try:
+        # Verify file exists and user owns it
+        file = db.query(File).join(Project).filter(
+            File.id == file_id,
+            Project.user_id == current_user.id
+        ).first()
+        if not file:
+            raise HTTPException(status_code=404, detail="File not found")
+
+        # Verify new project exists and user owns it
+        new_project = db.query(Project).filter(
+            Project.id == move_data.new_project_id,
+            Project.user_id == current_user.id
+        ).first()
+        if not new_project:
+            raise HTTPException(status_code=404, detail="Target project not found")
+
+        # Get order for new project
+        if move_data.new_order is not None:
+            new_order = move_data.new_order
+        else:
+            # Put at the end of the new project
+            new_order = db.query(File).filter(File.project_id == move_data.new_project_id).count()
+
+        # Update file
+        file.project_id = move_data.new_project_id
+        file.order = new_order
+        file.updated_at = datetime.utcnow()
+
+        db.commit()
+        db.refresh(file)
+        return file
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error moving file: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to move file: {str(e)}")
 
 # Simulation endpoint
 @app.post("/run")
@@ -779,6 +897,35 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
         })
 
 
+@app.get("/task-status/{task_id}")
+async def get_task_status(task_id: str):
+    """Get the current status of a task"""
+    logger.info(f"Checking status for task {task_id}")
+
+    # Check if task exists in our active tasks
+    if task_id not in active_tasks:
+        logger.warning(f"Task {task_id} not found in active tasks")
+        raise HTTPException(status_code=404, detail="Task not found")
+
+    task_info = active_tasks[task_id]
+    status_info = task_info.get("status", {})
+
+    response = {
+        "task_id": task_id,
+        "status": status_info.get("status", "running") if isinstance(status_info, dict) else "running",
+        "current_step": status_info.get("step") if isinstance(status_info, dict) else None,
+        "message": status_info.get("message") if isinstance(status_info, dict) else None,
+        "orchestrator_status": status_info if isinstance(status_info, dict) else None,
+    }
+
+    # Include results if completed
+    if status_info.get("status") == "completed" and "results_data" in task_info:
+        response["results"] = task_info["results_data"]
+
+    logger.info(f"Task {task_id} status: {response}")
+    return response
+
+
 @app.get("/health")
 async def health_check():
     return {
@@ -805,13 +952,14 @@ async def save_simulation_result(
         if existing:
             # Update existing result
             existing.results = result_data.results
+            existing.output = result_data.output
             existing.status = result_data.status
             if result_data.status == "completed":
                 existing.completed_at = datetime.utcnow()
             db.commit()
             db.refresh(existing)
             return existing
-        
+
         # Create new simulation result
         sim_result = SimulationResult(
             user_id=current_user.id,
@@ -820,6 +968,7 @@ async def save_simulation_result(
             task_id=result_data.task_id,
             simulation_config=result_data.simulation_config,
             results=result_data.results,
+            output=result_data.output,
             status=result_data.status,
             completed_at=datetime.utcnow() if result_data.status == "completed" else None
         )
@@ -843,17 +992,32 @@ async def get_file_simulation_results(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Get the latest simulation results for a file"""
+    """Get the latest simulation results for a file (including running simulations)"""
     try:
-        # Get the most recent completed simulation for this file
+        # First check for running simulations
+        running_result = db.query(SimulationResult).filter(
+            SimulationResult.file_id == file_id,
+            SimulationResult.user_id == current_user.id,
+            SimulationResult.status == "running"
+        ).order_by(SimulationResult.created_at.desc()).first()
+
+        if running_result:
+            logger.info(f"Found running simulation for file {file_id}: task {running_result.task_id}")
+            return running_result
+
+        # If no running simulation, get the most recent completed simulation
+        # Use created_at for ordering since completed_at might be NULL
         result = db.query(SimulationResult).filter(
             SimulationResult.file_id == file_id,
             SimulationResult.user_id == current_user.id,
             SimulationResult.status == "completed"
-        ).order_by(SimulationResult.completed_at.desc()).first()
-        
+        ).order_by(SimulationResult.created_at.desc()).first()
+
+        if result:
+            logger.info(f"Found completed simulation for file {file_id}: results present = {result.results is not None}")
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Error fetching simulation results: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch results: {str(e)}")
@@ -867,11 +1031,12 @@ async def get_project_simulations(
 ):
     """Get all completed simulations for a project"""
     try:
+        # Use created_at for ordering since completed_at might be NULL
         simulations = db.query(SimulationResult).filter(
             SimulationResult.project_id == project_id,
             SimulationResult.user_id == current_user.id,
             SimulationResult.status == "completed"
-        ).order_by(SimulationResult.completed_at.desc()).all()
+        ).order_by(SimulationResult.created_at.desc()).all()
         
         return {
             "simulations": [

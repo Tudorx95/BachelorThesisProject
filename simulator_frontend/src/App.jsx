@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { SimulationProvider, useSimulation } from './context/SimulationContext';
+import { ThemeProvider } from './context/ThemeContext';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import Sidebar from './components/Sidebar';
@@ -11,29 +13,46 @@ import ComparePage from './pages/ComparePage';
 import MultiExportCSV from './components/MultiExportCSV';
 
 function AppContent() {
-    const { user, token, loading, isAuthenticated } = useAuth();
+    const { user, token, loading: authLoading, isAuthenticated } = useAuth();
+
+    // Use SimulationContext pentru persistență
+    const {
+        config: simulationConfig,
+        setConfig: setSimulationConfig,
+        activeSimulation,
+        simulationOutput,
+        startSimulation,
+        updateSimulationStep,
+        updateProgress,
+        completeSimulation,
+        failSimulation,
+        stopSimulation,
+        clearSimulationOutput,
+        fileSimulationStates,
+        setFileSimulationStates,
+        completedSimulations,
+        setCompletedSimulations,
+        activeProjectId,
+        setActiveProjectId,
+        activeFileId,
+        setActiveFileId
+    } = useSimulation();
+
     const [showLogin, setShowLogin] = useState(true);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
     // Projects and files state
     const [projects, setProjects] = useState([]);
-    const [activeProjectId, setActiveProjectId] = useState(null);
-    const [activeFileId, setActiveFileId] = useState(null);
-
-    // Per-file simulation state - stocăm starea pentru fiecare fișier
-    const [fileSimulationStates, setFileSimulationStates] = useState({});
-    // Structure: { fileId: { isRunning, isCancelling, currentTaskId, orchestratorStatus } }
 
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
-    const [simulationConfig, setSimulationConfig] = useState(null);
     const [pendingRun, setPendingRun] = useState(false);
-    const [completedSimulations, setCompletedSimulations] = useState({});
     const [showComparePage, setShowComparePage] = useState(false);
     const [showMultiExport, setShowMultiExport] = useState(false);
 
     // Store WebSocket connections per taskId for multiple simultaneous simulations
     const wsRefs = useRef({});
     const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
+    const WS_URL = process.env.REACT_APP_WS_URL || 'ws://localhost:8000';
 
     // Auth headers
     const authHeaders = {
@@ -147,6 +166,30 @@ function AppContent() {
         }
     };
 
+    // Check if task is still running on the backend
+    const checkTaskStatus = async (taskId) => {
+        try {
+            const response = await fetch(`${API_URL}/task-status/${taskId}`, {
+                headers: authHeaders
+            });
+
+            if (!response.ok) {
+                if (response.status === 404) {
+                    console.log(`[Reconnect] Task ${taskId} not found on server`);
+                    return null;
+                }
+                throw new Error('Failed to check task status');
+            }
+
+            const status = await response.json();
+            console.log(`[Reconnect] Task ${taskId} status:`, status);
+            return status;
+        } catch (error) {
+            console.error('[Reconnect] Error checking task status:', error);
+            return null;
+        }
+    };
+
     // Load simulation results for active file
     const loadSimulationResults = async (fileId) => {
         try {
@@ -161,25 +204,85 @@ function AppContent() {
             }
 
             const result = await response.json();
+            console.log(`[Load] Received result from backend for file ${fileId}:`, result);
 
-            if (result && result.results) {
-                // Restore the orchestrator status from saved results
-                updateFileSimState(fileId, {
-                    orchestratorStatus: {
-                        status: 'completed',
-                        results_data: result.results,
-                        step: 7,
-                        message: 'Simulation completed (restored from database)'
+            if (result && (result.results || result.status === 'running')) {
+                // Restore the output if it exists
+                if (result.output) {
+                    const updatedProjects = projects.map(p => ({
+                        ...p,
+                        files: p.files.map(f =>
+                            f.id === fileId ? { ...f, output: result.output } : f
+                        )
+                    }));
+                    setProjects(updatedProjects);
+                }
+
+                // Check if this is a completed simulation or still running
+                if (result.status === 'completed') {
+                    console.log(`[Load] Restoring completed simulation with results:`, result.results);
+
+                    // Restore the orchestrator status from saved results
+                    updateFileSimState(fileId, {
+                        orchestratorStatus: {
+                            status: 'completed',
+                            results_data: result.results,
+                            step: 7,
+                            message: 'Simulation completed (restored from database)'
+                        }
+                    });
+
+                    // Mark as completed
+                    setCompletedSimulations(prev => ({
+                        ...prev,
+                        [fileId]: true
+                    }));
+
+                    console.log(`[Load] Loaded completed simulation results for file ${fileId}`);
+                } else if (result.task_id && result.status === 'running') {
+                    // Task is still running, check backend status and reconnect WebSocket
+                    console.log(`[Load] Found running task ${result.task_id} for file ${fileId}`);
+
+                    const taskStatus = await checkTaskStatus(result.task_id);
+
+                    if (taskStatus && taskStatus.status === 'running') {
+                        // Task is still running on backend, reconnect WebSocket
+                        console.log(`[Reconnect] Reconnecting WebSocket for task ${result.task_id}`);
+
+                        updateFileSimState(fileId, {
+                            isRunning: true,
+                            currentTaskId: result.task_id,
+                            orchestratorStatus: taskStatus.orchestrator_status || {
+                                status: 'running',
+                                step: taskStatus.current_step || 1,
+                                message: 'Reconnected to running simulation'
+                            }
+                        });
+
+                        // Reconnect WebSocket
+                        connectWebSocket(result.task_id, fileId, '');
+                    } else {
+                        // Task is no longer running, mark as completed or error
+                        console.log(`[Reconnect] Task ${result.task_id} is no longer running`);
+                        updateFileSimState(fileId, {
+                            isRunning: false,
+                            currentTaskId: null,
+                            orchestratorStatus: {
+                                status: taskStatus?.status || 'completed',
+                                step: 7,
+                                message: 'Simulation finished while offline',
+                                results_data: taskStatus?.results || result.results
+                            }
+                        });
+
+                        if (taskStatus?.status === 'completed') {
+                            setCompletedSimulations(prev => ({
+                                ...prev,
+                                [fileId]: true
+                            }));
+                        }
                     }
-                });
-
-                // Mark as completed
-                setCompletedSimulations(prev => ({
-                    ...prev,
-                    [fileId]: true
-                }));
-
-                console.log(`Loaded simulation results for file ${fileId}`);
+                }
             }
         } catch (error) {
             console.error('Error loading simulation results:', error);
@@ -313,6 +416,117 @@ function AppContent() {
         }
     };
 
+    // Rename file
+    const handleRenameFile = async (fileId, newName) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/${fileId}/rename`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({ name: newName })
+            });
+
+            if (!response.ok) throw new Error('Failed to rename file');
+
+            const updatedFile = await response.json();
+
+            const updatedProjects = projects.map(p => ({
+                ...p,
+                files: p.files.map(f =>
+                    f.id === fileId ? { ...f, name: updatedFile.name } : f
+                )
+            }));
+
+            setProjects(updatedProjects);
+        } catch (error) {
+            console.error('Error renaming file:', error);
+            alert('Failed to rename file');
+        }
+    };
+
+    // Reorder files
+    const handleReorderFiles = async (updates) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/reorder`, {
+                method: 'POST',
+                headers: authHeaders,
+                body: JSON.stringify({ updates })
+            });
+
+            if (!response.ok) throw new Error('Failed to reorder files');
+
+            // Optimistically update UI
+            const updatedProjects = projects.map(project => {
+                const updatedFiles = [...project.files];
+
+                // Apply order updates
+                updates.forEach(update => {
+                    const fileIndex = updatedFiles.findIndex(f => f.id === update.file_id);
+                    if (fileIndex !== -1) {
+                        updatedFiles[fileIndex] = { ...updatedFiles[fileIndex], order: update.new_order };
+                    }
+                });
+
+                // Sort by order
+                updatedFiles.sort((a, b) => a.order - b.order);
+
+                return { ...project, files: updatedFiles };
+            });
+
+            setProjects(updatedProjects);
+        } catch (error) {
+            console.error('Error reordering files:', error);
+            alert('Failed to reorder files');
+            // Reload projects to get correct state from server
+            loadProjects();
+        }
+    };
+
+    // Move file to different project
+    const handleMoveFile = async (fileId, newProjectId, newOrder) => {
+        try {
+            const response = await fetch(`${API_URL}/api/files/${fileId}/move`, {
+                method: 'PATCH',
+                headers: authHeaders,
+                body: JSON.stringify({
+                    new_project_id: newProjectId,
+                    new_order: newOrder
+                })
+            });
+
+            if (!response.ok) throw new Error('Failed to move file');
+
+            const updatedFile = await response.json();
+
+            // Remove file from old project and add to new project
+            const updatedProjects = projects.map(project => {
+                if (project.id === newProjectId) {
+                    // Add file to new project
+                    const newFiles = [...project.files, updatedFile];
+                    newFiles.sort((a, b) => a.order - b.order);
+                    return { ...project, files: newFiles };
+                } else {
+                    // Remove file from old project
+                    return {
+                        ...project,
+                        files: project.files.filter(f => f.id !== fileId)
+                    };
+                }
+            });
+
+            setProjects(updatedProjects);
+
+            // Update active project if file was moved
+            if (activeFileId === fileId) {
+                setActiveProjectId(newProjectId);
+            }
+        } catch (error) {
+            console.error('Error moving file:', error);
+            alert('Failed to move file');
+            // Reload projects to get correct state from server
+            loadProjects();
+        }
+    };
+
     // Select project
     const handleSelectProject = (projectId) => {
         setActiveProjectId(projectId);
@@ -356,12 +570,18 @@ function AppContent() {
     };
 
     // Save simulation results to database
-    const saveSimulationResults = async (fileId, taskId, config, results, status = 'completed') => {
+    const saveSimulationResults = async (fileId, taskId, config, results, status = 'completed', output = null) => {
         try {
             const project = projects.find(p => p.files.some(f => f.id === fileId));
             if (!project) {
                 console.error('Project not found for file', fileId);
                 return;
+            }
+
+            // Get current output from the file if not provided
+            if (!output) {
+                const file = project.files.find(f => f.id === fileId);
+                output = file?.output || null;
             }
 
             const response = await fetch(`${API_URL}/api/simulation-results`, {
@@ -373,6 +593,7 @@ function AppContent() {
                     task_id: taskId,
                     simulation_config: config,
                     results: results,
+                    output: output,
                     status: status
                 })
             });
@@ -390,7 +611,7 @@ function AppContent() {
 
     // Connect to WebSocket for orchestrator updates
     const connectWebSocket = (taskId, fileId, initialOutput) => {
-        const ws = new WebSocket(`ws://localhost:8000/ws/${taskId}`);
+        const ws = new WebSocket(`${WS_URL}/ws/${taskId}`);
 
         // Store this WebSocket with its taskId
         wsRefs.current[taskId] = ws;
@@ -474,8 +695,53 @@ function AppContent() {
     // Cancel simulation
     const handleCancelSimulation = async () => {
         const taskId = activeFileSimState.currentTaskId;
+
+        // Helper function pentru cleanup local
+        const performLocalCleanup = (message) => {
+            console.log(`[Cancel] Performing local cleanup: ${message}`);
+
+            // Update orchestrator status to show cancellation
+            updateFileSimState(activeFileId, {
+                orchestratorStatus: {
+                    status: 'cancelled',
+                    message: message,
+                    step: activeFileSimState.orchestratorStatus?.step || 1
+                }
+            });
+
+            // Close and cleanup WebSocket connection
+            if (taskId) {
+                const ws = wsRefs.current[taskId];
+                if (ws && ws.readyState === WebSocket.OPEN) {
+                    ws.close();
+                }
+                delete wsRefs.current[taskId];
+            }
+
+            // Update file output
+            const updatedProjects = projects.map(p => ({
+                ...p,
+                files: p.files.map(f =>
+                    f.id === activeFileId ? {
+                        ...f,
+                        output: (f.output || '') + '\n\n=== Cancelled ===\n' + message
+                    } : f
+                )
+            }));
+            setProjects(updatedProjects);
+
+            // Reset states
+            updateFileSimState(activeFileId, {
+                isRunning: false,
+                isCancelling: false,
+                currentTaskId: null
+            });
+        };
+
+        // Dacă nu există task ID, forțează cleanup local
         if (!taskId) {
-            console.error('[Cancel] No task ID available to cancel');
+            console.warn('[Cancel] No task ID available - performing force cleanup');
+            performLocalCleanup('Task cancelled locally (no active task ID)');
             return;
         }
 
@@ -493,60 +759,36 @@ function AppContent() {
                 }
             });
 
+            // Dacă taskul nu există pe backend (404), face cleanup local
+            if (response.status === 404) {
+                console.warn('[Cancel] Task not found on backend - performing local cleanup');
+                performLocalCleanup('Task not found on server (possibly already completed or cancelled)');
+                return;
+            }
+
             const data = await response.json();
 
             if (data.status === 'success') {
                 console.log('[Cancel] Simulation cancelled successfully:', data);
-
-                // Update orchestrator status to show cancellation
-                updateFileSimState(activeFileId, {
-                    orchestratorStatus: {
-                        status: 'cancelled',
-                        message: data.message || 'Simulation cancelled by user',
-                        step: activeFileSimState.orchestratorStatus?.step || 1
-                    }
-                });
-
-                // Close and cleanup WebSocket connection
-                const ws = wsRefs.current[taskId];
-                if (ws && ws.readyState === WebSocket.OPEN) {
-                    ws.close();
-                }
-                delete wsRefs.current[taskId];
-
-                // Update file output
-                const updatedProjects = projects.map(p => ({
-                    ...p,
-                    files: p.files.map(f =>
-                        f.id === activeFileId ? {
-                            ...f,
-                            output: (f.output || '') + '\n\n=== Cancelled ===\n' + data.message
-                        } : f
-                    )
-                }));
-                setProjects(updatedProjects);
-
-                // Reset states
-                updateFileSimState(activeFileId, {
-                    isRunning: false,
-                    isCancelling: false,
-                    currentTaskId: null
-                });
-
+                performLocalCleanup(data.message || 'Simulation cancelled by user');
             } else {
                 console.error('[Cancel] Cancellation failed:', data);
-                alert(`Failed to cancel simulation: ${data.detail || 'Unknown error'}`);
-                updateFileSimState(activeFileId, {
-                    isCancelling: false
-                });
+                // Chiar dacă backend-ul spune că a eșuat, încearcă cleanup local
+                performLocalCleanup(`Cancellation response: ${data.detail || 'Unknown error'}`);
             }
 
         } catch (error) {
             console.error('[Cancel] Error cancelling simulation:', error);
-            alert(`Error cancelling simulation: ${error.message}`);
-            updateFileSimState(activeFileId, {
-                isCancelling: false
-            });
+
+            // Dacă este eroare de network sau task nu există, face cleanup local oricum
+            if (error.message.includes('fetch') || error.message.includes('NetworkError')) {
+                console.warn('[Cancel] Network error - performing local cleanup anyway');
+                performLocalCleanup('Task cancelled locally (server unreachable)');
+            } else {
+                // Pentru alte erori, arată mesaj dar tot face cleanup
+                alert(`Error cancelling simulation: ${error.message}\nPerforming local cleanup anyway.`);
+                performLocalCleanup('Task cancelled with errors');
+            }
         }
     };
 
@@ -624,6 +866,16 @@ function AppContent() {
                 updateFileSimState(activeFileId, {
                     currentTaskId: data.task_id
                 });
+
+                // Save initial task info to database for reconnection after refresh
+                await saveSimulationResults(
+                    activeFileId,
+                    data.task_id,
+                    simulationConfig,
+                    null, // No results yet
+                    'running'
+                );
+
                 // Pass fileId to connectWebSocket
                 connectWebSocket(data.task_id, activeFileId, data.output);
             } else {
@@ -649,7 +901,7 @@ function AppContent() {
     };
 
     // Show loading screen
-    if (loading) {
+    if (authLoading) {
         return (
             <div className="flex items-center justify-center h-screen bg-gray-50">
                 <div className="text-center">
@@ -682,7 +934,7 @@ function AppContent() {
     }
 
     return (
-        <div className="flex h-screen bg-gray-50">
+        <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
             <Sidebar
                 isOpen={isSidebarOpen}
                 projects={projects}
@@ -695,6 +947,9 @@ function AppContent() {
                 onCreateProject={handleCreateProject}
                 onCreateFile={handleCreateFile}
                 onShowMultiExport={() => setShowMultiExport(true)}
+                onReorderFiles={handleReorderFiles}
+                onRenameFile={handleRenameFile}
+                onMoveFile={handleMoveFile}
             />
             <div className="flex-1 flex flex-col">
                 <TopBar
@@ -705,10 +960,11 @@ function AppContent() {
                     onShowComparePage={() => setShowComparePage(true)}
                     activeProjectId={activeProjectId}
                 />
-                <div className="flex-1 overflow-auto p-6">
-                    <div className="max-w-5xl mx-auto space-y-4">
-                        {activeFile ? (
-                            <>
+                <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900">
+                    {activeFile ? (
+                        <div className="h-full flex gap-4">
+                            {/* CodeCell - always visible, takes full width if no output */}
+                            <div className={`flex flex-col ${(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) ? 'w-1/2' : 'w-full max-w-5xl mx-auto'}`}>
                                 <CodeCell
                                     content={activeFile.content || ''}
                                     handleContentChange={handleContentChange}
@@ -716,8 +972,11 @@ function AppContent() {
                                     isRunning={activeFileSimState.isRunning}
                                     isCompleted={completedSimulations[activeFileId]}
                                 />
-                                {/* Afișăm OutputCell doar dacă există output SAU simulare activă pentru ACEST fișier */}
-                                {(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) && (
+                            </div>
+
+                            {/* OutputCell - appears on the right when there's output or simulation running */}
+                            {(activeFile.output || activeFileSimState.isRunning || activeFileSimState.orchestratorStatus) && (
+                                <div className="w-1/2 flex flex-col">
                                     <OutputCell
                                         output={activeFile.output || ''}
                                         isLoading={activeFileSimState.isRunning}
@@ -726,17 +985,17 @@ function AppContent() {
                                         isCancelling={activeFileSimState.isCancelling}
                                         fileName={activeFile.name}
                                     />
-                                )}
-                            </>
-                        ) : (
-                            <div className="text-center py-20">
-                                <p className="text-gray-500 text-lg">No file selected</p>
-                                <p className="text-gray-400 text-sm mt-2">
-                                    Create a new project and file to get started
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="text-center py-20">
+                            <p className="text-gray-500 dark:text-gray-400 text-lg">No file selected</p>
+                            <p className="text-gray-400 dark:text-gray-500 text-sm mt-2">
+                                Create a new project and file to get started
+                            </p>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -770,8 +1029,12 @@ function AppContent() {
 
 export default function App() {
     return (
-        <AuthProvider>
-            <AppContent />
-        </AuthProvider>
+        <ThemeProvider>
+            <AuthProvider>
+                <SimulationProvider>
+                    <AppContent />
+                </SimulationProvider>
+            </AuthProvider>
+        </ThemeProvider>
     );
 }

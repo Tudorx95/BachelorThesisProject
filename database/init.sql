@@ -7,8 +7,7 @@ CREATE TABLE IF NOT EXISTS users (
     username VARCHAR(100) UNIQUE NOT NULL,
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create projects table
@@ -17,8 +16,7 @@ CREATE TABLE IF NOT EXISTS projects (
     user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Create files table
@@ -27,6 +25,7 @@ CREATE TABLE IF NOT EXISTS files (
     project_id INTEGER NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     content TEXT NOT NULL,
+    "order" INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -40,6 +39,7 @@ CREATE TABLE IF NOT EXISTS simulation_results (
     task_id VARCHAR(100) UNIQUE NOT NULL,
     simulation_config JSONB NOT NULL,
     results JSONB,
+    output TEXT,
     status VARCHAR(50) DEFAULT 'pending',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     completed_at TIMESTAMP
@@ -50,11 +50,12 @@ CREATE INDEX idx_users_username ON users(username);
 CREATE INDEX idx_users_email ON users(email);
 CREATE INDEX idx_projects_user_id ON projects(user_id);
 CREATE INDEX idx_files_project_id ON files(project_id);
+CREATE INDEX idx_files_project_order ON files(project_id, "order");
 CREATE INDEX idx_simulation_results_user_id ON simulation_results(user_id);
 CREATE INDEX idx_simulation_results_task_id ON simulation_results(task_id);
 CREATE INDEX idx_simulation_results_status ON simulation_results(status);
 
--- Create updated_at trigger function
+-- Create updated_at trigger function for files table
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -63,13 +64,7 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- Apply triggers
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
-    FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
+-- Apply trigger only to files table (users and projects don't have updated_at)
 CREATE TRIGGER update_files_updated_at BEFORE UPDATE ON files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
@@ -85,8 +80,8 @@ INSERT INTO projects (user_id, name, description) VALUES
 ON CONFLICT DO NOTHING;
 
 -- Insert demo file
-INSERT INTO files (project_id, name, content) VALUES 
-(1, 'Welcome.md', '# Welcome to FL Simulator!
+INSERT INTO files (project_id, name, "order", content) VALUES
+(1, 'Welcome.md', 0, '# Welcome to FL Simulator!
 
 ## Getting Started
 
