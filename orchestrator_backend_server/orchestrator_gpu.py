@@ -446,16 +446,33 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
                 poisoned_accuracy = history[-1].get('accuracy', 0)
                 app.logger.info(f"[{task_id}] Extracted poisoned_accuracy from round_metrics_history: {poisoned_accuracy}")
         
-
+        # ========== STEP: Citire Init Accuracy ==========
+        init_accuracy = 0.0
+        
+        # Încearcă JSON (format nou)
+        verification_file = user_dir / "init-verification.json"
+        if verification_file.exists():
+            try:
+                with open(verification_file, 'r') as f:
+                    verification_data = json.load(f)
+                    init_accuracy = verification_data.get('initial_metrics', {}).get('accuracy', 0.0)
+                    if init_accuracy > 0:
+                        app.logger.info(f"[{task_id}] Init accuracy from JSON: {init_accuracy:.4f}")
+            except Exception as e:
+                app.logger.warning(f"[{task_id}] Could not read JSON: {e}")
+        # here are the final results
         analysis = {
+            'init_accuracy': init_accuracy,                        # NOU!
             'clean_accuracy': clean_accuracy,
             'poisoned_accuracy': poisoned_accuracy,
-            'accuracy_drop': clean_accuracy - poisoned_accuracy,
+            'accuracy_drop': clean_accuracy - poisoned_accuracy,   # Old (păstrat)
+            'drop_clean_init': clean_accuracy - init_accuracy,     # NOU!
+            'drop_poison_init': poisoned_accuracy - init_accuracy, # NOU!
             'clean_metrics': clean_results,
             'poisoned_metrics': poisoned_results,
             'gpu_used': gpu_info
         }
-        
+
         analysis_path = user_dir / "results" / "analysis.json"
         with open(analysis_path, 'w') as f:
             json.dump(analysis, f, indent=2)
@@ -463,9 +480,12 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         summary = f"""FL Simulation Complete
 Task: {task_id}
 GPU: {gpu_info}
+Init Accuracy: {analysis['init_accuracy']:.4f}
 Clean Accuracy: {analysis['clean_accuracy']:.4f}
 Poisoned Accuracy: {analysis['poisoned_accuracy']:.4f}
-Drop: {analysis['accuracy_drop']:.4f}
+Drop (Clean - Poisoned): {analysis['accuracy_drop']:.4f}
+Drop (Clean - Init): {analysis['drop_clean_init']:.4f}
+Drop (Poisoned - Init): {analysis['drop_poison_init']:.4f}
 """
         
         summary_path = user_dir / "results" / "summary.txt"

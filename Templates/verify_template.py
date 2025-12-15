@@ -3,13 +3,16 @@
 Script de test pentru template_code.py
 Verifică că toate funcțiile critice funcționează corect
 
-VERSION: 2.0
+VERSION: 2.2
 UPDATED: December 14, 2025
+FIX: Debugging îmbunătățit pentru calculate_metrics
 COMPATIBLE WITH: template_code.py (MNIST) și template_code_creare_model_hugg.py (CIFAR-10)
 """
 
 import sys
 import traceback
+import json
+from pathlib import Path
 
 def test_template():
     """Testează funcțiile principale din template"""
@@ -212,6 +215,119 @@ def test_template():
         traceback.print_exc()
         return False
     
+    # ========== TEST 8: Calculare și salvare metrici inițiale ==========
+    print("\n8. Calculare și salvare metrici inițiale...")
+    init_metrics = {}
+    
+    try:
+        # Verificare dacă există date de test pentru evaluare
+        print("   ⏳ Încărcare date de test pentru evaluare...")
+        
+        # Încarcă date test
+        try:
+            train_ds, test_ds = template_code.load_train_test_data()
+            print("   ✓ Date încărcate (train + test)")
+            
+            # DEBUG: Verifică tipul datelor
+            print(f"   🔍 Tip train_ds: {type(train_ds)}")
+            print(f"   🔍 Tip test_ds: {type(test_ds)}")
+            
+            # Preprocesare date
+            print("   ⏳ Preprocesare date...")
+            _, test_ds = template_code.preprocess_loaded_data(train_ds, test_ds)
+            print("   ✓ Date preprocesate")
+            
+            # DEBUG: Verifică un batch
+            print("   🔍 Verificare format date...")
+            for images, labels in test_ds.take(1):
+                print(f"      - Images shape: {images.shape}")
+                print(f"      - Images dtype: {images.dtype}")
+                print(f"      - Labels shape: {labels.shape}")
+                print(f"      - Labels dtype: {labels.dtype}")
+                
+                # Verifică dacă labels sunt one-hot
+                import tensorflow as tf
+                if len(labels.shape) == 2 and labels.shape[1] > 1:
+                    print(f"      ✓ Labels sunt one-hot encoded ({labels.shape[1]} clase)")
+                else:
+                    print(f"      ⚠️  Labels NU sunt one-hot encoded!")
+            
+        except Exception as e:
+            print(f"   ✗ Nu s-au putut încărca datele de test: {e}")
+            traceback.print_exc()
+            print("   ℹ️  Salvare metrici fără evaluare pe date...")
+            test_ds = None
+        
+        # Calculează metrici inițiale dacă avem date
+        if test_ds is not None:
+            try:
+                print("   ⏳ Calculare metrici inițiale (poate dura ~30-60s)...")
+                
+                init_metrics = template_code.calculate_metrics(model, test_ds)
+                print("   ✓ Metrici calculate cu succes")
+                
+                # Afișare metrici
+                for metric_name, value in init_metrics.items():
+                    print(f"      • {metric_name}: {value:.4f}")
+                    
+            except Exception as e:
+                print(f"   ✗ Eroare la calculare metrici: {e}")
+                traceback.print_exc()
+                print("   ℹ️  Continuare cu metrici goale...")
+                init_metrics = {}
+        else:
+            print("   ⚠️  Date de test indisponibile - metrici nu pot fi calculate")
+            init_metrics = {}
+        
+        # Construiește dicționar complet cu info model + metrici
+        verification_data = {
+            "verification_timestamp": str(Path.cwd()),
+            "template_verified": True,
+            "model_info": {
+                "name": model_info.get('model_name', model.name if hasattr(model, 'name') else 'unknown'),
+                "total_params": int(model_info['total_params']),
+                "trainable_params": int(model_info.get('trainable_params', model_info['total_params'])),
+                "non_trainable_params": int(model_info['total_params'] - model_info.get('trainable_params', model_info['total_params'])),
+                "layers_count": int(model_info['layers_count']),
+                "input_shape": str(model_info.get('input_shape', 'N/A')),
+                "output_shape": str(model_info.get('output_shape', 'N/A')),
+                "is_compiled": bool(model_info['is_compiled']),
+                "loss_type": loss_type,
+                "image_format": img_format
+            },
+            "initial_metrics": {
+                metric_name: float(value) for metric_name, value in init_metrics.items()
+            },
+            "weights_info": {
+                "total_weight_layers": len(weights),
+                "weights_extractable": True,
+                "weights_settable": True
+            },
+            "functions_verified": {
+                func: True for func in required_functions
+            }
+        }
+        
+        # Salvează în init-verification.json
+        output_file = Path("init-verification.json")
+        with open(output_file, 'w') as f:
+            json.dump(verification_data, f, indent=2)
+        
+        print(f"\n   ✓ Verificare salvată în: {output_file.absolute()}")
+        print(f"   📊 Model: {verification_data['model_info']['name']}")
+        print(f"   📊 Parametri: {verification_data['model_info']['total_params']:,}")
+        if init_metrics:
+            print(f"   📊 Accuracy inițială: {init_metrics.get('accuracy', 0):.4f}")
+            print(f"   ✅ Metrici calculate și salvate cu succes!")
+        else:
+            print(f"   ⚠️  Metrici inițiale goale (evaluare eșuată)")
+            print(f"   ℹ️  Verifică log-urile de mai sus pentru detalii")
+        
+    except Exception as e:
+        print(f"   ✗ Eroare la salvare verificare: {e}")
+        traceback.print_exc()
+        print("   ℹ️  Verificare template continuă (salvare opțională)")
+    
     # SUCCES
     print("\n" + "=" * 70)
     print("✅ TOATE TESTELE AU TRECUT CU SUCCES!")
@@ -222,6 +338,12 @@ def test_template():
     print(f"  • {model_info['total_params']:,} parametri în model")
     print(f"  • Manipulare ponderi funcțională")
     print(f"  • Funcții auxiliare operative")
+    if Path("init-verification.json").exists():
+        print(f"  • Verificare salvată în init-verification.json")
+        if init_metrics:
+            print(f"  • Metrici inițiale: ✅ Calculate")
+        else:
+            print(f"  • Metrici inițiale: ⚠️  Goale (verifică log)")
     print("\n✓ Template READY pentru FL simulation!")
     print("=" * 70)
     

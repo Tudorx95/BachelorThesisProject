@@ -313,6 +313,12 @@ function ResultBox({ title, data }) {
             <div className="mb-4">
                 <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">📈 Simulation Results:</h4>
                 <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-purple-50 dark:bg-purple-900/20 rounded border border-purple-200 dark:border-purple-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Init Accuracy:</strong>
+                        <span className="font-mono text-purple-700 dark:text-purple-400 text-base font-bold">
+                            {analysis.init_accuracy?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
                     <div className="flex justify-between p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-200 dark:border-green-800">
                         <strong className="text-gray-700 dark:text-gray-300">Clean Accuracy:</strong>
                         <span className="font-mono text-green-700 dark:text-green-400 text-base font-bold">
@@ -326,9 +332,21 @@ function ResultBox({ title, data }) {
                         </span>
                     </div>
                     <div className="flex justify-between p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-800">
-                        <strong className="text-gray-700 dark:text-gray-300">Accuracy Drop:</strong>
+                        <strong className="text-gray-700 dark:text-gray-300">Drop (Clean - Poisoned):</strong>
                         <span className="font-mono text-orange-700 dark:text-orange-400 text-base font-bold">
                             {analysis.accuracy_drop?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Drop (Clean - Init):</strong>
+                        <span className="font-mono text-yellow-700 dark:text-yellow-400 text-base font-bold">
+                            {analysis.drop_clean_init?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-pink-50 dark:bg-pink-900/20 rounded border border-pink-200 dark:border-pink-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Drop (Poisoned - Init):</strong>
+                        <span className="font-mono text-pink-700 dark:text-pink-400 text-base font-bold">
+                            {analysis.drop_poison_init?.toFixed(4) || 'N/A'}
                         </span>
                     </div>
                     <div className="flex justify-between p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
