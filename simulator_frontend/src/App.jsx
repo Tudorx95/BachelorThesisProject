@@ -10,6 +10,7 @@ import CodeCell from './components/CodeCell';
 import OutputCell from './components/OutputCell';
 import SimulationOptions from './components/SimulationOptions';
 import ComparePage from './pages/ComparePage';
+import GraphsPage from './pages/GraphsPage';
 import MultiExportCSV from './components/MultiExportCSV';
 
 function AppContent() {
@@ -44,9 +45,13 @@ function AppContent() {
     // Projects and files state
     const [projects, setProjects] = useState([]);
 
+    // Template content state
+    const [templateContent, setTemplateContent] = useState('# New File\n\n## Write your code here\n');
+
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
     const [pendingRun, setPendingRun] = useState(false);
     const [showComparePage, setShowComparePage] = useState(false);
+    const [showGraphsPage, setShowGraphsPage] = useState(false);
     const [showMultiExport, setShowMultiExport] = useState(false);
 
     // Store WebSocket connections per taskId for multiple simultaneous simulations
@@ -94,6 +99,24 @@ function AppContent() {
             });
             wsRefs.current = {};
         };
+    }, []);
+
+    // Load template content on mount
+    useEffect(() => {
+        const loadTemplate = async () => {
+            try {
+                const response = await fetch('/template_antrenare.py');
+                if (response.ok) {
+                    const content = await response.text();
+                    setTemplateContent(content);
+                } else {
+                    console.warn('Failed to load template, using default content');
+                }
+            } catch (error) {
+                console.error('Error loading template:', error);
+            }
+        };
+        loadTemplate();
     }, []);
 
     // Load projects when authenticated
@@ -343,7 +366,7 @@ function AppContent() {
                 headers: authHeaders,
                 body: JSON.stringify({
                     name,
-                    content: '# New File\n\n## Write your code here\n'
+                    content: templateContent
                 })
             });
 
@@ -933,6 +956,17 @@ function AppContent() {
         );
     }
 
+    // Show GraphsPage if requested
+    if (showGraphsPage) {
+        return (
+            <GraphsPage
+                onBack={() => setShowGraphsPage(false)}
+                token={token}
+                activeProjectId={activeProjectId}
+            />
+        );
+    }
+
     return (
         <div className="flex h-screen bg-gray-50 dark:bg-gray-900 transition-colors">
             <Sidebar
@@ -958,6 +992,7 @@ function AppContent() {
                     activeFile={activeFile}
                     onShowSimulationOptions={() => setShowSimulationOptions(true)}
                     onShowComparePage={() => setShowComparePage(true)}
+                    onShowGraphsPage={() => setShowGraphsPage(true)}
                     activeProjectId={activeProjectId}
                 />
                 <div className="flex-1 overflow-auto p-6 bg-gray-50 dark:bg-gray-900">

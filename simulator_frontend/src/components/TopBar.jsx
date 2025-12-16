@@ -1,5 +1,5 @@
 import React from 'react';
-import { Menu, Settings, LogOut, User, GitCompare, Moon, Sun } from 'lucide-react';
+import { Menu, Settings, LogOut, User, GitCompare, Moon, Sun, LineChart } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
 
@@ -9,6 +9,7 @@ export default function TopBar({
     activeFile,
     onShowSimulationOptions,
     onShowComparePage,
+    onShowGraphsPage,
     activeProjectId,
     disableNavigation = false
 }) {
@@ -46,6 +47,16 @@ export default function TopBar({
                 >
                     <GitCompare className="w-4 h-4" />
                     <span className="text-sm">Compare</span>
+                </button>
+
+                <button
+                    onClick={onShowGraphsPage}
+                    disabled={!activeProjectId || disableNavigation}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-900/50 rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-green-50 dark:disabled:hover:bg-green-900/30"
+                    title="View Simulation Graphs"
+                >
+                    <LineChart className="w-4 h-4" />
+                    <span className="text-sm">Graphs</span>
                 </button>
             </div>
 
