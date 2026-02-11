@@ -245,10 +245,15 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         
         # Find the model file created by template_code.py
         # It could be saved as {model.name}.keras (e.g., "sequential.keras", "resnet18.keras")
-        possible_model_files = list(user_dir.glob("*.keras"))
+        if framework == "tensorflow":
+            possible_model_files = list(user_dir.glob("*.keras"))
+            expected_ext = ".keras"
+        else:  # pytorch
+            possible_model_files = list(user_dir.glob("*.pth"))
+            expected_ext = ".pth"
         
         if not possible_model_files:
-            error_msg = "No .keras model file found after template execution"
+            error_msg = f"No {expected_ext} model file found after template execution"
             shared_simulations[task_id] = {"status": "error", "message": error_msg}
             app.logger.error(error_msg)
             return
