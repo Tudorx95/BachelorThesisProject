@@ -59,7 +59,7 @@ export const SimulationProvider = ({ children }) => {
                 R: 5,
                 ROUNDS: 10,
                 strategy: 'first',
-                poison_operation: 'noise',
+                poison_operation: 'backdoor_blended',
                 poison_intensity: 0.1,
                 poison_percentage: 0.2
             };
@@ -72,7 +72,7 @@ export const SimulationProvider = ({ children }) => {
                 R: 5,
                 ROUNDS: 10,
                 strategy: 'first',
-                poison_operation: 'noise',
+                poison_operation: 'backdoor_blended',
                 poison_intensity: 0.1,
                 poison_percentage: 0.2
             };

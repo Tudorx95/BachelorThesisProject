@@ -248,9 +248,13 @@ function ResultBox({ title, data }) {
                         <div className="flex justify-between items-center">
                             <strong className="text-gray-700 dark:text-gray-300">Operation:</strong>
                             <span className="font-mono text-red-700 dark:text-red-400">
-                                {config.poison_operation === 'noise' && '🔊 Gaussian Noise'}
                                 {config.poison_operation === 'label_flip' && '🔄 Label Flip'}
-                                {config.poison_operation === 'backdoor' && '🚪 Backdoor Trigger'}
+                                {config.poison_operation === 'backdoor_badnets' && '🎯 BadNets Backdoor'}
+                                {config.poison_operation === 'backdoor_blended' && '🌀 Blended Backdoor'}
+                                {config.poison_operation === 'backdoor_sig' && '📡 SIG Backdoor'}
+                                {config.poison_operation === 'backdoor_trojan' && '🏴 Trojan Backdoor'}
+                                {config.poison_operation === 'semantic_backdoor' && '🎨 Semantic Backdoor'}
+                                {config.poison_operation === 'backdoor_edge_case' && '🔀 Edge-case Backdoor'}
                                 {!config.poison_operation && 'N/A'}
                             </span>
                         </div>

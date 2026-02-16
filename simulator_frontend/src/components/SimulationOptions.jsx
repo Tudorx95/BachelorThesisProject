@@ -11,10 +11,17 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
         R: 5,
         ROUNDS: 10,
         strategy: 'first',
-        poison_operation: 'noise',
+        poison_operation: 'backdoor_blended',
         poison_intensity: 0.1,
         poison_percentage: 0.2,
-        data_poison_protection: 'fedavg'
+        data_poison_protection: 'fedavg',
+        target_class: '',
+        no_flip: false,
+        trigger_type: 'square',
+        pattern_type: 'random',
+        modification: 'green_tint',
+        transform: 'rotation',
+        watermark_type: 'apple'
     });
 
     const handleChange = (field, value) => {
@@ -28,6 +35,18 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
         e.preventDefault();
         onSave(config);
     };
+
+    // Determine which sub-parameters to show based on selected operation
+    const op = config.poison_operation;
+    const isBackdoor = op.startsWith('backdoor_');
+    const showTargetClass = op === 'label_flip' || isBackdoor;
+    const showNoFlip = isBackdoor;
+    const showTriggerType = op === 'backdoor_badnets';
+    const showPatternType = op === 'backdoor_blended';
+    const showModification = op === 'semantic_backdoor';
+    const showTransform = op === 'backdoor_edge_case';
+    const showWatermarkType = op === 'backdoor_trojan';
+    const hasSubParams = showTargetClass || showNoFlip || showTriggerType || showPatternType || showModification || showTransform || showWatermarkType;
 
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -161,9 +180,13 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                                     onChange={(e) => handleChange('poison_operation', e.target.value)}
                                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
                                 >
-                                    <option value="noise">Gaussian Noise</option>
-                                    <option value="label_flip">Label Flip</option>
-                                    <option value="backdoor">Backdoor Trigger</option>
+                                    <option value="label_flip">🔄 Label Flip (dirty-label)</option>
+                                    <option value="backdoor_badnets">🎯 BadNets Backdoor</option>
+                                    <option value="backdoor_blended">🌀 Blended Backdoor</option>
+                                    <option value="backdoor_sig">📡 SIG Backdoor (sinusoidal)</option>
+                                    <option value="backdoor_trojan">🏴 Trojan Backdoor (watermark)</option>
+                                    <option value="semantic_backdoor">🎨 Semantic Backdoor</option>
+                                    <option value="backdoor_edge_case">🔀 Edge-case Backdoor</option>
                                 </select>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type of poisoning attack</p>
                             </div>
@@ -202,6 +225,154 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">% of data to poison (0.01-1.0)</p>
                             </div>
                         </div>
+
+                        {/* Conditional sub-parameters based on selected operation */}
+                        {hasSubParams && (
+                            <div className="mt-4 p-3 bg-white dark:bg-gray-700 rounded-lg border border-red-200 dark:border-red-700">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">
+                                    ⚙️ Attack-Specific Parameters
+                                </h4>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* Target Class — for label_flip and all backdoor attacks */}
+                                    {showTargetClass && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Target Class
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={config.target_class || ''}
+                                                onChange={(e) => handleChange('target_class', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                                placeholder="e.g., cat, 0 (leave empty for random)"
+                                            />
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Target class for label flip (empty = random)</p>
+                                        </div>
+                                    )}
+
+                                    {/* No Flip — for all backdoor attacks */}
+                                    {showNoFlip && (
+                                        <div className="flex items-center gap-3 self-end pb-2">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={config.no_flip || false}
+                                                    onChange={(e) => handleChange('no_flip', e.target.checked)}
+                                                    className="w-4 h-4 text-red-600 bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 rounded focus:ring-red-500"
+                                                />
+                                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                                    Don't flip labels
+                                                </span>
+                                            </label>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400">Keep original labels for backdoor images</p>
+                                        </div>
+                                    )}
+
+                                    {/* Trigger Type — for backdoor_badnets */}
+                                    {showTriggerType && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Trigger Type
+                                            </label>
+                                            <select
+                                                value={config.trigger_type || 'square'}
+                                                onChange={(e) => handleChange('trigger_type', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            >
+                                                <option value="square">■ Square</option>
+                                                <option value="cross">✚ Cross</option>
+                                                <option value="L">⌐ L-shape</option>
+                                                <option value="checkerboard">▦ Checkerboard</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Shape of the BadNets trigger pattern</p>
+                                        </div>
+                                    )}
+
+                                    {/* Pattern Type — for backdoor_blended */}
+                                    {showPatternType && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Pattern Type
+                                            </label>
+                                            <select
+                                                value={config.pattern_type || 'random'}
+                                                onChange={(e) => handleChange('pattern_type', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            >
+                                                <option value="random">🎲 Random noise</option>
+                                                <option value="horizontal">═ Horizontal stripes</option>
+                                                <option value="vertical">║ Vertical stripes</option>
+                                                <option value="grid">▦ Grid pattern</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Blended pattern mixed with images</p>
+                                        </div>
+                                    )}
+
+                                    {/* Modification — for semantic_backdoor */}
+                                    {showModification && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Semantic Modification
+                                            </label>
+                                            <select
+                                                value={config.modification || 'green_tint'}
+                                                onChange={(e) => handleChange('modification', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            >
+                                                <option value="green_tint">🟢 Green tint</option>
+                                                <option value="blue_tint">🔵 Blue tint</option>
+                                                <option value="sepia">🟤 Sepia effect</option>
+                                                <option value="high_contrast">⬛ High contrast</option>
+                                                <option value="warm">🟠 Warm tones</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Natural-looking semantic modification</p>
+                                        </div>
+                                    )}
+
+                                    {/* Transform — for backdoor_edge_case */}
+                                    {showTransform && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Edge-case Transform
+                                            </label>
+                                            <select
+                                                value={config.transform || 'rotation'}
+                                                onChange={(e) => handleChange('transform', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            >
+                                                <option value="rotation">🔄 Rotation (15-45°)</option>
+                                                <option value="flip_both">↕️ Flip both axes</option>
+                                                <option value="negative">🔳 Partial negative</option>
+                                                <option value="posterize">🎨 Posterize</option>
+                                                <option value="solarize">☀️ Solarize</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Rare transformation used as trigger</p>
+                                        </div>
+                                    )}
+
+                                    {/* Watermark Type — for backdoor_trojan */}
+                                    {showWatermarkType && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                                Watermark Type
+                                            </label>
+                                            <select
+                                                value={config.watermark_type || 'apple'}
+                                                onChange={(e) => handleChange('watermark_type', e.target.value)}
+                                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                            >
+                                                <option value="apple">🍎 Apple</option>
+                                                <option value="star">⭐ Star</option>
+                                                <option value="circle">⚪ Circle</option>
+                                                <option value="triangle">🔺 Triangle</option>
+                                            </select>
+                                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Shape of the watermark used as trojan trigger</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
                         <div className="mt-3 p-3 bg-red-100 dark:bg-red-900/30 rounded text-sm text-red-800 dark:text-red-300">
                             <strong>Note:</strong> Data poisoning is automatically applied to simulate attacks.
                             Configure the attack parameters above.

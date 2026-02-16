@@ -285,24 +285,38 @@ function AppContent() {
                         // Reconnect WebSocket
                         connectWebSocket(result.task_id, fileId, '');
                     } else {
-                        // Task is no longer running, mark as completed or error
-                        console.log(`[Reconnect] Task ${result.task_id} is no longer running`);
+                        // Task is no longer running — determine actual status
+                        const actualStatus = taskStatus?.status || 'cancelled';
+                        console.log(`[Reconnect] Task ${result.task_id} is no longer running, status: ${actualStatus}`);
                         updateFileSimState(fileId, {
                             isRunning: false,
                             currentTaskId: null,
                             orchestratorStatus: {
-                                status: taskStatus?.status || 'completed',
+                                status: actualStatus,
                                 step: 7,
-                                message: 'Simulation finished while offline',
+                                message: actualStatus === 'completed'
+                                    ? 'Simulation finished while offline'
+                                    : 'Simulation was cancelled or lost',
                                 results_data: taskStatus?.results || result.results
                             }
                         });
 
-                        if (taskStatus?.status === 'completed') {
+                        if (actualStatus === 'completed') {
                             setCompletedSimulations(prev => ({
                                 ...prev,
                                 [fileId]: true
                             }));
+                        }
+
+                        // Update DB status so future reloads don't re-check
+                        if (actualStatus !== 'completed') {
+                            saveSimulationResults(
+                                fileId,
+                                result.task_id,
+                                simulationConfig,
+                                null,
+                                actualStatus
+                            );
                         }
                     }
                 }
@@ -732,6 +746,13 @@ function AppContent() {
                 }
             });
 
+            // Clear completed flag so CodeCell no longer shows green/completed
+            setCompletedSimulations(prev => {
+                const updated = { ...prev };
+                delete updated[activeFileId];
+                return updated;
+            });
+
             // Close and cleanup WebSocket connection
             if (taskId) {
                 const ws = wsRefs.current[taskId];
@@ -759,6 +780,17 @@ function AppContent() {
                 isCancelling: false,
                 currentTaskId: null
             });
+
+            // Save cancelled status to database so page refresh sees it correctly
+            if (taskId) {
+                saveSimulationResults(
+                    activeFileId,
+                    taskId,
+                    simulationConfig,
+                    null,
+                    'cancelled'
+                );
+            }
         };
 
         // Dacă nu există task ID, forțează cleanup local
