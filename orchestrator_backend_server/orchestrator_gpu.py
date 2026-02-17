@@ -258,7 +258,7 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
         
-        # Get the first .keras file (should be the one created by template)
+        # Get the first .keras/.pth file (should be the one created by template)
         source_model = possible_model_files[0]
         
         # Target name from config
@@ -315,7 +315,7 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
             raise InterruptedError("Simulation cancelled by user")
 
-        # ========== STEP 8: Poison data ==========
+        # ========== STEP 8: Poison data (v2) ==========
         poison_script = Path(__file__).parent / "poison_data.py"
         test_file = user_dir / "results" / "attack_info.json"
         cmd = (
@@ -325,6 +325,20 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             f"--intensity {config['poison_intensity']} "
             f"--percentage {config['poison_percentage']}"
         )
+        # Optional v2 parameters
+        if config.get('target_class'):
+            cmd += f" --target_class {config['target_class']}"
+        if config.get('no_flip'):
+            cmd += " --no_flip"
+        if config.get('trigger_type'):
+            cmd += f" --trigger_type {config['trigger_type']}"
+        if config.get('pattern_type'):
+            cmd += f" --pattern_type {config['pattern_type']}"
+        if config.get('modification'):
+            cmd += f" --modification {config['modification']}"
+        if config.get('transform'):
+            cmd += f" --transform {config['transform']}"
+        
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
         if result.returncode != 0:
             error_msg = f"Poison data failed: {result.stderr}\nStdout: {result.stdout}"

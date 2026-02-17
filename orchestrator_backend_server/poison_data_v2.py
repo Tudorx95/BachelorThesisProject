@@ -291,10 +291,10 @@ def backdoor_sig(
         signal = amplitude * np.sin(y)
         signal_2d = np.tile(signal.reshape(-1, 1), (1, width))
     
-    signal_3d = np.stack([signal_2d] * 3, axis=-1)
+    signal_3d = np.stack([signal_2d] * 3, axis=-1)  # Creeaza 3 dimensiuni 
     
     poisoned = img_array + signal_3d
-    poisoned = np.clip(poisoned, 0, 255).astype(np.uint8)
+    poisoned = np.clip(poisoned, 0, 255).astype(np.uint8)   # ajustam semnalul sa fie in intervalul de pixeli 
     
     return Image.fromarray(poisoned)
 
@@ -556,18 +556,9 @@ def apply_poisoning(
         trigger_params: Parametri suplimentari pentru trigger
     """
     
-    print("=" * 70)
-    print(f"DATA POISONING ATTACK: {operation.upper()}")
-    print("=" * 70)
-    print(f"Input: {input_dir}")
-    print(f"Output: {output_dir}")
-    print(f"Intensity: {intensity}")
-    print(f"Percentage: {percentage * 100:.1f}%")
     if target_class:
         print(f"Target class: {target_class}")
-    print("=" * 70)
-    print("\nNOTĂ: Acest script modifică DOAR datele, NU face fine-tuning!")
-    print("Datele poisoned vor fi folosite la antrenarea ulterioară.\n")
+    
     
     # Copiază structura
     if os.path.exists(output_dir):
@@ -576,12 +567,10 @@ def apply_poisoning(
     
     # Extrage clasele
     class_names = extract_labels(input_dir)
-    print(f"Clase găsite: {class_names}")
     
     # Selectează clasa țintă
     if target_class is None:
         target_class = class_names[0]
-    print(f"Clasa țintă pentru label flip: {target_class}")
     
     # Parametri trigger
     params = trigger_params or {}
@@ -632,7 +621,7 @@ def apply_poisoning(
                         )
                         
                     elif operation == 'backdoor_blended':
-                        image = backdoor_blended(
+                        image = backdoor_blended( 
                             image,
                             alpha=intensity,
                             pattern_type=params.get('pattern_type', 'random'),
@@ -648,7 +637,7 @@ def apply_poisoning(
                         )
                         
                     elif operation == 'backdoor_trojan':
-                        image = backdoor_trojan(
+                        image = backdoor_trojan(    # fara dimensiune watermark 
                             image,
                             watermark_type=params.get('watermark_type', 'star'),
                             opacity=intensity,
