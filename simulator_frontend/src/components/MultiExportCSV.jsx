@@ -161,6 +161,15 @@ export default function MultiExportCSV({ onClose, token, projects }) {
                 'Drop (Poisoned DP - Init)',
                 'DP Protection Method',
                 'GPU Used',
+                'Clean Precision',
+                'Clean Recall',
+                'Clean F1',
+                'Poisoned Precision',
+                'Poisoned Recall',
+                'Poisoned F1',
+                'DP Protection Precision',
+                'DP Protection Recall',
+                'DP Protection F1',
                 'Summary'
             ];
             rows.push(headers);
@@ -218,6 +227,15 @@ export default function MultiExportCSV({ onClose, token, projects }) {
                     analysis.drop_poison_dp_init?.toFixed(4) || 'N/A',
                     analysis.data_poison_protection_method || 'N/A',
                     analysis.gpu_used || 'N/A',
+                    analysis.clean_precision?.toFixed(4) || 'N/A',
+                    analysis.clean_recall?.toFixed(4) || 'N/A',
+                    analysis.clean_f1?.toFixed(4) || 'N/A',
+                    analysis.poisoned_precision?.toFixed(4) || 'N/A',
+                    analysis.poisoned_recall?.toFixed(4) || 'N/A',
+                    analysis.poisoned_f1?.toFixed(4) || 'N/A',
+                    analysis.poisoned_dp_precision?.toFixed(4) || 'N/A',
+                    analysis.poisoned_dp_recall?.toFixed(4) || 'N/A',
+                    analysis.poisoned_dp_f1?.toFixed(4) || 'N/A',
                     (results.summary || 'N/A').replace(/"/g, '""') // Escape quotes in summary
                 ];
 

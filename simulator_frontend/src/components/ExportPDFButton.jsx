@@ -158,6 +158,32 @@ export default function ExportPDFButton({ results, fileName }) {
                 y += 6;
                 pdf.text(`GPU Used: ${results.analysis.gpu_used || 'N/A'}`, 25, y);
                 y += 12;
+
+                // Confusion Matrix Metrics
+                checkNewPage(60);
+                pdf.setFont(undefined, 'bold');
+                pdf.text('Confusion Matrix Metrics (Weighted Avg):', 25, y);
+                y += 8;
+                pdf.setFont(undefined, 'normal');
+
+                pdf.text(`Clean Precision: ${results.analysis.clean_precision?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Clean Recall: ${results.analysis.clean_recall?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Clean F1 Score: ${results.analysis.clean_f1?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 8;
+                pdf.text(`Poisoned Precision: ${results.analysis.poisoned_precision?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Poisoned Recall: ${results.analysis.poisoned_recall?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Poisoned F1 Score: ${results.analysis.poisoned_f1?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 8;
+                pdf.text(`DP Protection Precision: ${results.analysis.poisoned_dp_precision?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`DP Protection Recall: ${results.analysis.poisoned_dp_recall?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`DP Protection F1 Score: ${results.analysis.poisoned_dp_f1?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 12;
             }
 
             // ========== SUMMARY SECTION ==========

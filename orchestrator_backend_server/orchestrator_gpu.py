@@ -55,6 +55,9 @@ def create_default_results_file(results_path):
     """Creează un fișier de rezultate default dacă simularea nu îl generează"""
     default_results = {
         "final_accuracy": 0.0,
+        "final_precision": 0.0,
+        "final_recall": 0.0,
+        "final_f1": 0.0,
         "round_metrics_history": [],
         "convergence_metrics": [],
         "weight_divergence": [],
@@ -499,7 +502,20 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         clean_accuracy = clean_results.get('final_accuracy', 0)
         poisoned_accuracy = poisoned_results.get('final_accuracy', 0)
         poisoned_dp_accuracy = poisoned_dp_results.get('final_accuracy', 0)
-        
+
+        # Extract precision, recall, F1 for each scenario
+        clean_precision = clean_results.get('final_precision', 0)
+        clean_recall = clean_results.get('final_recall', 0)
+        clean_f1 = clean_results.get('final_f1', 0)
+
+        poisoned_precision = poisoned_results.get('final_precision', 0)
+        poisoned_recall = poisoned_results.get('final_recall', 0)
+        poisoned_f1 = poisoned_results.get('final_f1', 0)
+
+        poisoned_dp_precision = poisoned_dp_results.get('final_precision', 0)
+        poisoned_dp_recall = poisoned_dp_results.get('final_recall', 0)
+        poisoned_dp_f1 = poisoned_dp_results.get('final_f1', 0)
+
 
         # If final_accuracy is 0 or missing, extract from last round
         if clean_accuracy == 0 and 'round_metrics_history' in clean_results:
@@ -544,6 +560,15 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             'drop_clean_init': clean_accuracy - init_accuracy,
             'drop_poison_init': poisoned_accuracy - init_accuracy,
             'drop_poison_dp_init': poisoned_dp_accuracy - init_accuracy,
+            'clean_precision': clean_precision,
+            'clean_recall': clean_recall,
+            'clean_f1': clean_f1,
+            'poisoned_precision': poisoned_precision,
+            'poisoned_recall': poisoned_recall,
+            'poisoned_f1': poisoned_f1,
+            'poisoned_dp_precision': poisoned_dp_precision,
+            'poisoned_dp_recall': poisoned_dp_recall,
+            'poisoned_dp_f1': poisoned_dp_f1,
             'clean_metrics': clean_results,
             'poisoned_metrics': poisoned_results,
             'poisoned_dp_metrics': poisoned_dp_results,
@@ -567,6 +592,16 @@ Drop (Clean - Init): {analysis['drop_clean_init']:.4f}
 Drop (Poisoned - Init): {analysis['drop_poison_init']:.4f}
 Drop (Poisoned_DP - Init): {analysis['drop_poison_dp_init']:.4f}
 Data Poison Protection Method: {analysis['data_poison_protection_method']}
+--- Confusion Matrix Metrics (Weighted Avg) ---
+Clean Precision: {analysis['clean_precision']:.4f}
+Clean Recall: {analysis['clean_recall']:.4f}
+Clean F1 Score: {analysis['clean_f1']:.4f}
+Poisoned Precision: {analysis['poisoned_precision']:.4f}
+Poisoned Recall: {analysis['poisoned_recall']:.4f}
+Poisoned F1 Score: {analysis['poisoned_f1']:.4f}
+DP Protection Precision: {analysis['poisoned_dp_precision']:.4f}
+DP Protection Recall: {analysis['poisoned_dp_recall']:.4f}
+DP Protection F1 Score: {analysis['poisoned_dp_f1']:.4f}
 """
         
         summary_path = user_dir / "results" / "summary.txt"

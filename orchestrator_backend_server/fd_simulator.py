@@ -439,7 +439,13 @@ class EnhancedFederatedServer:
             if self.use_template and TEMPLATE_FUNCS.has_function('calculate_metrics'):
                 calc_metrics_func = TEMPLATE_FUNCS.get_function('calculate_metrics')
                 metrics = calc_metrics_func(self.global_model, test_ds)
-                return metrics.get('accuracy', 0.0)
+                acc = metrics.get('accuracy', 0.0)
+                return {
+                    'accuracy': acc,
+                    'precision': metrics.get('precision', 0.0),
+                    'recall': metrics.get('recall', 0.0),
+                    'f1': metrics.get('f1', metrics.get('f1_score', 0.0))
+                }
             else:
                 # Evaluare manuală
                 y_true, y_pred = [], []
@@ -463,12 +469,17 @@ class EnhancedFederatedServer:
                             y_true.extend(labels.cpu().numpy())
                             y_pred.extend(predicted.cpu().numpy())
                 
-                from sklearn.metrics import accuracy_score
-                return accuracy_score(y_true, y_pred)
+                from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+                return {
+                    'accuracy': float(accuracy_score(y_true, y_pred)),
+                    'precision': float(precision_score(y_true, y_pred, average='weighted', zero_division=0)),
+                    'recall': float(recall_score(y_true, y_pred, average='weighted', zero_division=0)),
+                    'f1': float(f1_score(y_true, y_pred, average='weighted', zero_division=0))
+                }
                 
         except Exception as e:
             logger.error(f"Error evaluating global model: {e}")
-            return 0.0
+            return {'accuracy': 0.0, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
     
     def run(self):
         """Rulează simularea FL"""
@@ -524,13 +535,17 @@ class EnhancedFederatedServer:
             set_model_weights_framework_agnostic(self.global_model, self.global_weights, self.use_template)
             
             # Evaluare
-            global_accuracy = self._evaluate_global_model()
+            eval_metrics = self._evaluate_global_model()
+            global_accuracy = eval_metrics['accuracy']
             round_time = time.time() - round_start
             
             # Metrici per rundă
             round_metrics = {
                 'round': round_nr,
                 'accuracy': float(global_accuracy),
+                'precision': float(eval_metrics['precision']),
+                'recall': float(eval_metrics['recall']),
+                'f1': float(eval_metrics['f1']),
                 'num_clients': len(round_updates),
                 'round_time': float(round_time),
                 'framework': FRAMEWORK
@@ -539,7 +554,7 @@ class EnhancedFederatedServer:
             self.round_metrics_history.append(round_metrics)
             self.round_times.append(round_time)
             
-            logger.info(f"Round {round_nr}: Accuracy = {global_accuracy:.4f}, Time = {round_time:.2f}s")
+            logger.info(f"Round {round_nr}: Accuracy = {global_accuracy:.4f}, Precision = {eval_metrics['precision']:.4f}, Recall = {eval_metrics['recall']:.4f}, F1 = {eval_metrics['f1']:.4f}, Time = {round_time:.2f}s")
             
             # Distribuie weights actualizate
             if round_nr < self.rounds - 1:
@@ -570,10 +585,17 @@ class EnhancedFederatedServer:
         if not self.json_manager:
             return
         
-        final_accuracy = self.round_metrics_history[-1]['accuracy'] if self.round_metrics_history else 0.0
+        last_round = self.round_metrics_history[-1] if self.round_metrics_history else {}
+        final_accuracy = last_round.get('accuracy', 0.0)
+        final_precision = last_round.get('precision', 0.0)
+        final_recall = last_round.get('recall', 0.0)
+        final_f1 = last_round.get('f1', 0.0)
         
         results = {
             'final_accuracy': final_accuracy,
+            'final_precision': final_precision,
+            'final_recall': final_recall,
+            'final_f1': final_f1,
             'round_metrics_history': self.round_metrics_history,
             'convergence_metrics': self.convergence_metrics,
             'weight_divergence': self.weight_divergence,
