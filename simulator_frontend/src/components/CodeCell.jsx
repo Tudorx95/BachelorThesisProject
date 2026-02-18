@@ -1,6 +1,6 @@
 // CodeCell.jsx (updated with Monaco Editor for persistent syntax highlighting)
 import React, { useState } from 'react';
-import { Play, Loader2, Copy, Check } from 'lucide-react';
+import { Play, Loader2, Copy, Check, RefreshCw } from 'lucide-react';
 import Editor, { loader } from '@monaco-editor/react';
 import { useTheme } from '../context/ThemeContext';
 
@@ -11,7 +11,7 @@ loader.config({
     }
 });
 
-export default function CodeCell({ content, handleContentChange, handleRun, isRunning, isCompleted }) {
+export default function CodeCell({ content, handleContentChange, handleRun, isRunning, isCompleted, activeTemplate, onToggleTemplate }) {
     const [copied, setCopied] = useState(false);
     const { isDarkMode } = useTheme();
 
@@ -49,7 +49,21 @@ export default function CodeCell({ content, handleContentChange, handleRun, isRu
     return (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col h-full">
             <div className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
-                <span className="text-sm font-medium text-gray-600 dark:text-gray-300">Code</span>
+                <div className="flex items-center gap-2">
+                    {/* Template Toggle Button */}
+                    <button
+                        onClick={onToggleTemplate}
+                        disabled={isCompleted || isRunning}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors ${activeTemplate === 'tensorflow'
+                            ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60'
+                            : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
+                            } disabled:opacity-50 disabled:cursor-not-allowed`}
+                        title={`Switch to ${activeTemplate === 'tensorflow' ? 'PyTorch' : 'TensorFlow'} template`}
+                    >
+                        <RefreshCw className="w-3.5 h-3.5" />
+                        <span>{activeTemplate === 'tensorflow' ? '🔶 TensorFlow' : '🔥 PyTorch'}</span>
+                    </button>
+                </div>
                 <div className="flex items-center gap-2">
                     {/* Copy Button */}
                     <button

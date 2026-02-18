@@ -144,7 +144,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                                     <option value="first">First - Malicious at start</option>
                                     <option value="last">Last - Malicious at end</option>
                                     <option value="alternate">Alternate - Interleaved</option>
-                                    <option value="alternate_data">Alternate Data - Switch datasets</option>
                                 </select>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Client selection strategy</p>
                             </div>

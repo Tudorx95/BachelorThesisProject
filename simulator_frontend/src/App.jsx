@@ -46,7 +46,9 @@ function AppContent() {
     const [projects, setProjects] = useState([]);
 
     // Template content state
-    const [templateContent, setTemplateContent] = useState('# New File\n\n## Write your code here\n');
+    const [templateTensorflow, setTemplateTensorflow] = useState('# TensorFlow Template\n');
+    const [templatePytorch, setTemplatePytorch] = useState('# PyTorch Template\n');
+    const [activeTemplate, setActiveTemplate] = useState('tensorflow');
 
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
     const [pendingRun, setPendingRun] = useState(false);
@@ -101,22 +103,31 @@ function AppContent() {
         };
     }, []);
 
-    // Load template content on mount
+    // Load both template contents on mount
     useEffect(() => {
-        const loadTemplate = async () => {
+        const loadTemplates = async () => {
             try {
-                const response = await fetch('/template_antrenare.py');
-                if (response.ok) {
-                    const content = await response.text();
-                    setTemplateContent(content);
+                const [tfResponse, ptResponse] = await Promise.all([
+                    fetch('/template_antrenare_tensorflow.py'),
+                    fetch('/template_antrenare_pytorch.py')
+                ]);
+                if (tfResponse.ok) {
+                    const content = await tfResponse.text();
+                    setTemplatePytorch(content);
                 } else {
-                    console.warn('Failed to load template, using default content');
+                    console.warn('Failed to load TensorFlow template');
+                }
+                if (ptResponse.ok) {
+                    const content = await ptResponse.text();
+                    setTemplateTensorflow(content);
+                } else {
+                    console.warn('Failed to load PyTorch template');
                 }
             } catch (error) {
-                console.error('Error loading template:', error);
+                console.error('Error loading templates:', error);
             }
         };
-        loadTemplate();
+        loadTemplates();
     }, []);
 
     // Load projects when authenticated
@@ -380,7 +391,7 @@ function AppContent() {
                 headers: authHeaders,
                 body: JSON.stringify({
                     name,
-                    content: templateContent
+                    content: activeTemplate === 'tensorflow' ? templateTensorflow : templatePytorch
                 })
             });
 
@@ -1038,6 +1049,13 @@ function AppContent() {
                                     handleRun={handleRun}
                                     isRunning={activeFileSimState.isRunning}
                                     isCompleted={completedSimulations[activeFileId]}
+                                    activeTemplate={activeTemplate}
+                                    onToggleTemplate={() => {
+                                        const newTemplate = activeTemplate === 'tensorflow' ? 'pytorch' : 'tensorflow';
+                                        setActiveTemplate(newTemplate);
+                                        const newContent = newTemplate === 'tensorflow' ? templateTensorflow : templatePytorch;
+                                        handleContentChange(newContent);
+                                    }}
                                 />
                             </div>
 
