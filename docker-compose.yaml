@@ -1,5 +1,13 @@
 version: "3.9"
 
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  secret_key:
+    file: ./secrets/secret_key.txt
+  orchestrator_password:
+    file: ./secrets/orchestrator_password.txt
+
 services:
   # PostgreSQL Database
   db:
@@ -9,7 +17,9 @@ services:
     environment:
       POSTGRES_DB: fl_db
       POSTGRES_USER: user
-      POSTGRES_PASSWORD: pass
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets:
+      - db_password
     volumes:
       - db_data:/var/lib/postgresql/data
       - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
@@ -30,12 +40,16 @@ services:
     restart: unless-stopped
     network_mode: host
     environment:
-      - DATABASE_URL=postgresql://user:pass@localhost:5432/fl_db
-      - SECRET_KEY=your-secret-key-change-this-in-production-use-random-string
       - PYTHONUNBUFFERED=1
       - ORCHESTRATOR_URL=http://10.13.0.102:8000
       - ORCHESTRATOR_USER=tudor
-      - ORCHESTRATOR_PASSWORD=magma28fr
+      - DB_PASSWORD_FILE=/run/secrets/db_password
+      - SECRET_KEY_FILE=/run/secrets/secret_key
+      - ORCHESTRATOR_PASSWORD_FILE=/run/secrets/orchestrator_password
+    secrets:
+      - db_password
+      - secret_key
+      - orchestrator_password
     depends_on:
       db:
         condition: service_healthy

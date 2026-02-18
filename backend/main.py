@@ -20,16 +20,28 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Helper to read Docker secrets from file
+def read_secret(env_file_var: str, fallback_env: str = None, default: str = "") -> str:
+    """Read a secret from a Docker secret file, with fallback to env var and default."""
+    secret_file = os.getenv(env_file_var)
+    if secret_file and os.path.isfile(secret_file):
+        with open(secret_file, "r") as f:
+            return f.read().strip()
+    if fallback_env:
+        return os.getenv(fallback_env, default)
+    return default
+
 # Database configuration
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://user:pass@db:5432/fl_db")
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
+_db_password = read_secret("DB_PASSWORD_FILE", fallback_env="DB_PASSWORD", default="pass")
+DATABASE_URL = os.getenv("DATABASE_URL", f"postgresql://user:{_db_password}@localhost:5432/fl_db")
+SECRET_KEY = read_secret("SECRET_KEY_FILE", fallback_env="SECRET_KEY", default="your-secret-key-change-in-production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60  # 1 hour session
 
 # Orchestrator configuration
 ORCHESTRATOR_URL = "http://10.13.0.102:8000"  # IP-ul serverului ATM
 ORCHESTRATOR_USER = "tudor"
-ORCHESTRATOR_PASSWORD = "magma28fr"
+ORCHESTRATOR_PASSWORD = read_secret("ORCHESTRATOR_PASSWORD_FILE", fallback_env="ORCHESTRATOR_PASSWORD", default="")
 
 # Setup
 engine = create_engine(DATABASE_URL)
