@@ -28,7 +28,7 @@ A full-stack platform for simulating **data poisoning attacks** within a **Feder
 
 The platform follows a **two-machine distributed architecture**:
 
-![Platform Architecture](Arhitectura_Aplicatie.png)
+![Platform Architecture](App_Architecture.png)
 
 ---
 
