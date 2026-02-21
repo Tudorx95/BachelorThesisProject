@@ -199,7 +199,7 @@ class SimulationConfig(BaseModel):
     R: int
     ROUNDS: int
     strategy: str = "first"
-    poison_operation: str = "noise"
+    poison_operation: str = "label_flip"
     poison_intensity: float = 0.1
     poison_percentage: float = 0.2
     data_poison_protection: str = "fedavg"
