@@ -48,34 +48,39 @@ export const SimulationProvider = ({ children }) => {
         }
     });
 
+    // Valid poison operations (must match poison_data_v2.py)
+    const VALID_POISON_OPERATIONS = [
+        'label_flip', 'backdoor_badnets', 'backdoor_blended',
+        'backdoor_sig', 'backdoor_trojan', 'semantic_backdoor', 'backdoor_edge_case'
+    ];
+
     // Configurația curentă
     const [config, setConfig] = useState(() => {
+        const defaultConfig = {
+            N: 10,
+            M: 2,
+            NN_NAME: 'SimpleNN',
+            R: 5,
+            ROUNDS: 10,
+            strategy: 'first',
+            poison_operation: 'backdoor_blended',
+            poison_intensity: 0.1,
+            poison_percentage: 0.2
+        };
         try {
             const saved = localStorage.getItem(STORAGE_KEYS.CONFIG);
-            return saved ? JSON.parse(saved) : {
-                N: 10,
-                M: 2,
-                NN_NAME: 'SimpleNN',
-                R: 5,
-                ROUNDS: 10,
-                strategy: 'first',
-                poison_operation: 'backdoor_blended',
-                poison_intensity: 0.1,
-                poison_percentage: 0.2
-            };
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                // Migrate stale poison_operation values (e.g. 'noise')
+                if (!VALID_POISON_OPERATIONS.includes(parsed.poison_operation)) {
+                    parsed.poison_operation = defaultConfig.poison_operation;
+                }
+                return parsed;
+            }
+            return defaultConfig;
         } catch (error) {
             console.error('Error loading config:', error);
-            return {
-                N: 10,
-                M: 2,
-                NN_NAME: 'SimpleNN',
-                R: 5,
-                ROUNDS: 10,
-                strategy: 'first',
-                poison_operation: 'backdoor_blended',
-                poison_intensity: 0.1,
-                poison_percentage: 0.2
-            };
+            return defaultConfig;
         }
     });
 
