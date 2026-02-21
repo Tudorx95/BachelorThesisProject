@@ -1,6 +1,7 @@
 """
 Template pentru antrenarea rețelelor neuronale în medii Federated Learning
 Compatibil cu PyTorch
+
 Model: ResNet18 PRE-ANTRENAT descărcat de pe HuggingFace Hub
 Dataset: CIFAR-10 (60,000 imagini 32x32 RGB, 10 clase)
 """
@@ -16,7 +17,6 @@ from typing import Tuple, Dict, Any, List
 from pathlib import Path
 from PIL import Image
 import json
-import copy
 
 # ============================================================================
 # CONFIGURAȚIE GLOBALĂ
@@ -27,11 +27,12 @@ CIFAR10_CLASSES = [
 ]
 NUM_CLASSES = 10
 IMG_SIZE = (32, 32)
-HUGGINGFACE_REPO_ID = "Tudorx95/mnist-cnn-model"
-MODEL_FILENAME = "MNIST_CNN.pth"
+HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10"
+MODEL_FILENAME = "ResNet18_CIFAR10.pth"
 
 # Device configuration
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
 
 # ============================================================================
 # CUSTOM DATASET CLASS PENTRU FL
@@ -63,65 +64,21 @@ class CIFAR10Dataset(Dataset):
         
         return image, label
 
-# ============================================================================
-# WRAPPER PENTRU DATASET PYTORCH CĂTRE FORMAT COMPATIBIL CU TF
-# ============================================================================
-class PyTorchDatasetWrapper:
-    """
-    Wrapper care face DataLoader-ul PyTorch să arate ca tf.data.Dataset
-    pentru compatibilitate cu verify_template.py
-    """
-    
-    def __init__(self, dataloader: DataLoader):
-        self.dataloader = dataloader
-        self._iterator = None
-    
-    def __iter__(self):
-        self._iterator = iter(self.dataloader)
-        return self
-    
-    def __next__(self):
-        images, labels = next(self._iterator)
-        
-        # Convertește labels la one-hot pentru compatibilitate
-        labels_one_hot = torch.nn.functional.one_hot(labels, num_classes=NUM_CLASSES)
-        
-        return images, labels_one_hot
-    
-    def take(self, count):
-        """Emulează tf.data.Dataset.take()"""
-        taken = []
-        for i, batch in enumerate(self):
-            if i >= count:
-                break
-            taken.append(batch)
-        return iter(taken)
-    
-    def batch(self, batch_size):
-        """Returnează self (deja batched în DataLoader)"""
-        return self
-    
-    def map(self, func, **kwargs):
-        """Returnează self (preprocessing deja aplicat în transform)"""
-        return self
-    
-    def prefetch(self, buffer_size):
-        """Returnează self (prefetching gestionat de DataLoader)"""
-        return self
 
 # ============================================================================
 # 1. FUNCȚII PENTRU EXTRAGEREA DATELOR
 # ============================================================================
-def load_train_test_data() -> Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper]:
+def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
     """
     Încarcă CIFAR-10 dataset folosind torchvision.
     
     Returns:
-        Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper]: (train_dataset, test_dataset)
+        Tuple[DataLoader, DataLoader]: (train_loader, test_loader)
     """
-    # Transform simplu pentru încărcare inițială (fără normalizare)
+    # Transform cu normalizare CIFAR-10 (aceleași valori ca în antrenare)
     basic_transform = transforms.Compose([
         transforms.ToTensor(),
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     
     train_dataset = torchvision.datasets.CIFAR10(
@@ -155,8 +112,8 @@ def load_train_test_data() -> Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper
         pin_memory=True
     )
     
-    # Înfășoară în wrapper pentru compatibilitate
-    return PyTorchDatasetWrapper(train_loader), PyTorchDatasetWrapper(test_loader)
+    return train_loader, test_loader
+
 
 def preprocess(image, label):
     """
@@ -180,23 +137,25 @@ def preprocess(image, label):
     
     return image, label_one_hot
 
-def preprocess_loaded_data(train_ds, test_ds) -> Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper]:
+
+def preprocess_loaded_data(train_ds, test_ds) -> Tuple[DataLoader, DataLoader]:
     """
     Preprocesează dataset-urile încărcate.
     În PyTorch, preprocesarea e deja făcută în transforms.
     
     Args:
-        train_ds: Dataset de antrenare
-        test_ds: Dataset de testare
+        train_ds: DataLoader de antrenare
+        test_ds: DataLoader de testare
     
     Returns:
-        Tuple de dataset-uri preprocesate
+        Tuple de DataLoader-e preprocesate
     """
     # Dataset-urile sunt deja preprocesate în load_train_test_data
     # Returnăm direct pentru compatibilitate
     return train_ds, test_ds
 
-def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper]:
+
+def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, DataLoader]:
     """
     Funcție pentru încărcarea datelor în FL simulator.
     
@@ -205,7 +164,7 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[PyTorchDatas
         batch_size: Dimensiunea batch-ului
         
     Returns:
-        Tuple[PyTorchDatasetWrapper, PyTorchDatasetWrapper]: (train_ds, test_ds)
+        Tuple[DataLoader, DataLoader]: (train_loader, test_loader)
     """
     data_path = Path(data_path)
     train_dir = data_path / "train"
@@ -214,9 +173,10 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[PyTorchDatas
     if not train_dir.exists() or not test_dir.exists():
         raise FileNotFoundError(f"Data directories not found: {data_path}")
     
-    # Transform pentru preprocesare
+    # Transform pentru preprocesare (cu normalizare CIFAR-10 identică cu antrenarea)
     transform = transforms.Compose([
         transforms.ToTensor(),  # Convertește la tensor și normalizează la [0, 1]
+        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
     ])
     
     # Creează dataset-uri custom
@@ -240,7 +200,8 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[PyTorchDatas
         pin_memory=True
     )
     
-    return PyTorchDatasetWrapper(train_loader), PyTorchDatasetWrapper(test_loader)
+    return train_loader, test_loader
+
 
 def download_data(output_dir: str):
     """
@@ -297,54 +258,92 @@ def download_data(output_dir: str):
             if idx % 1000 == 0:
                 print(f"Processed {idx}/{len(dataset)} images in {split_name}")
 
+
 # ============================================================================
 # 2. FUNCȚIE PENTRU CREARE/DESCĂRCARE MODEL
 # ============================================================================
-def create_model() -> nn.Module:
+def _create_resnet18_cifar10() -> nn.Module:
     """
-    Descarcă model pre-antrenat de pe HuggingFace Hub sau creează ResNet18.
+    Creează arhitectura ResNet18 adaptată pentru CIFAR-10 (32x32).
+    NU încarcă ponderi pre-antrenate — doar arhitectura.
     
     Returns:
-        nn.Module: Model compilat
+        nn.Module: Model cu ponderi random
+    """
+    model = torchvision.models.resnet18(weights=None)
+    
+    # Modifică primul layer pentru CIFAR-10 (32x32 în loc de 224x224)
+    model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
+    model.maxpool = nn.Identity()  # Elimină maxpool pentru imagini mici
+    
+    # Modifică ultimul layer pentru NUM_CLASSES
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
+    
+    return model
+
+
+def create_model() -> nn.Module:
+    """
+    Descarcă model pre-antrenat de pe HuggingFace Hub.
+    
+    Checkpoint-ul conține toată configurația:
+    - model_state_dict: ponderile rețelei
+    - architecture: info despre arhitectură
+    - normalization: parametri de normalizare
+    - classes: lista de clase
+    - metrics: metricile de antrenare
+    
+    Returns:
+        nn.Module: Model compilat cu ponderi pre-antrenate
     """
     try:
         from huggingface_hub import hf_hub_download
         
-        # Încearcă să descarce modelul de pe HuggingFace
         model_path = hf_hub_download(
             repo_id=HUGGINGFACE_REPO_ID,
             filename=MODEL_FILENAME,
             cache_dir=".cache/huggingface"
         )
         
-        # Încarcă modelul
-        model = torch.load(model_path, map_location=DEVICE)
-        model.to(DEVICE)
-        model.eval()
+        checkpoint = torch.load(model_path, map_location=DEVICE)
         
-        print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        # Reconstruiește arhitectura din checkpoint
+        if isinstance(checkpoint, dict) and 'architecture' in checkpoint:
+            arch = checkpoint['architecture']
+            model = torchvision.models.resnet18(weights=None)
+            mod = arch['modifications']
+            model.conv1 = nn.Conv2d(3, 64, **mod['conv1'])
+            model.maxpool = nn.Identity()
+            model.fc = nn.Linear(mod['fc']['in_features'], mod['fc']['out_features'])
+            model.to(DEVICE)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        elif isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+            # Format checkpoint dict fără architecture (compatibilitate)
+            model = _create_resnet18_cifar10()
+            model.to(DEVICE)
+            model.load_state_dict(checkpoint['model_state_dict'])
+            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        elif isinstance(checkpoint, nn.Module):
+            # Format torch.save(model, path) (compatibilitate veche)
+            model = _create_resnet18_cifar10()
+            model.to(DEVICE)
+            model.load_state_dict(checkpoint.state_dict())
+            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        else:
+            # Format state_dict direct
+            model = _create_resnet18_cifar10()
+            model.to(DEVICE)
+            model.load_state_dict(checkpoint)
+            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        
+        _model_compile(model)
+        return model
         
     except Exception as e:
-        print(f"Could not download from HuggingFace: {e}")
-        print("Creating ResNet18 from torchvision instead...")
-        
-        # Fallback: creează ResNet18 standard
-        model = torchvision.models.resnet18(weights=None)
-        
-        # Modifică primul layer pentru CIFAR-10 (32x32 în loc de 224x224)
-        model.conv1 = nn.Conv2d(3, 64, kernel_size=3, stride=1, padding=1, bias=False)
-        model.maxpool = nn.Identity()  # Elimină maxpool pentru imagini mici
-        
-        # Modifică ultimul layer pentru NUM_CLASSES
-        num_ftrs = model.fc.in_features
-        model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
-        
-        model.to(DEVICE)
-    
-    # Compilează modelul (setează optimizer și loss)
-    _model_compile(model)
-    
-    return model
+        raise RuntimeError(f"Failed to download model from HuggingFace: {e}")
+
 
 def _model_compile(model: nn.Module):
     """
@@ -360,6 +359,7 @@ def _model_compile(model: nn.Module):
     
     # Flag pentru a ști că modelul e "compilat"
     model.is_compiled = True
+
 
 # ============================================================================
 # 3. FUNCȚII AUXILIARE
@@ -415,12 +415,13 @@ def validate_model_structure(model: nn.Module) -> Dict[str, Any]:
     
     return model_info
 
+
 # ============================================================================
 # 4. FUNCȚII PENTRU ANTRENARE
 # ============================================================================
 def train_neural_network(
     model: nn.Module,
-    train_data: PyTorchDatasetWrapper,
+    train_data: DataLoader,
     epochs: int = 1,
     verbose: int = 0
 ) -> Dict[str, Any]:
@@ -429,7 +430,7 @@ def train_neural_network(
     
     Args:
         model: Modelul de antrenat
-        train_data: Date de antrenare (DataLoader wrapped)
+        train_data: DataLoader de antrenare
         epochs: Număr de epoci
         verbose: Nivel de verbozitate (0, 1, 2)
     
@@ -451,7 +452,7 @@ def train_neural_network(
         correct = 0
         total = 0
         
-        for batch_idx, (images, labels) in enumerate(train_data.dataloader):
+        for batch_idx, (images, labels) in enumerate(train_data):
             # Move data to device
             images = images.to(DEVICE)
             
@@ -479,9 +480,9 @@ def train_neural_network(
             correct += (predicted == labels).sum().item()
             
             if verbose >= 2 and batch_idx % 100 == 0:
-                print(f'Epoch [{epoch+1}/{epochs}], Step [{batch_idx}/{len(train_data.dataloader)}], Loss: {loss.item():.4f}')
+                print(f'Epoch [{epoch+1}/{epochs}], Step [{batch_idx}/{len(train_data)}], Loss: {loss.item():.4f}')
         
-        epoch_loss = running_loss / len(train_data.dataloader)
+        epoch_loss = running_loss / len(train_data)
         epoch_acc = correct / total
         
         history['loss'].append(float(epoch_loss))
@@ -492,9 +493,10 @@ def train_neural_network(
     
     return history
 
+
 def calculate_metrics(
     model: nn.Module,
-    test_dataset: PyTorchDatasetWrapper,
+    test_dataset: DataLoader,
     average: str = 'macro'
 ) -> Dict[str, float]:
     """
@@ -502,7 +504,7 @@ def calculate_metrics(
     
     Args:
         model: Modelul evaluat
-        test_dataset: Dataset de test (DataLoader wrapped)
+        test_dataset: DataLoader de test
         average: Tip de medie pentru precision/recall/f1
     
     Returns:
@@ -514,7 +516,7 @@ def calculate_metrics(
     y_pred_list = []
     
     with torch.no_grad():
-        for images, labels in test_dataset.dataloader:
+        for images, labels in test_dataset:
             images = images.to(DEVICE)
             
             # Forward pass
@@ -540,6 +542,7 @@ def calculate_metrics(
     
     return metrics
 
+
 # ============================================================================
 # 5. FUNCȚII PENTRU MANIPULARE PONDERI
 # ============================================================================
@@ -559,6 +562,7 @@ def get_model_weights(model: nn.Module) -> List[np.ndarray]:
     
     return weights
 
+
 def set_model_weights(model: nn.Module, weights: List[np.ndarray]):
     """
     Setează ponderile modelului.
@@ -571,6 +575,7 @@ def set_model_weights(model: nn.Module, weights: List[np.ndarray]):
         for param, weight in zip(model.parameters(), weights):
             param.data = torch.from_numpy(weight).to(param.device)
 
+
 # ============================================================================
 # 6. FUNCȚII PENTRU SALVARE/ÎNCĂRCARE MODEL
 # ============================================================================
@@ -580,26 +585,42 @@ def save_model_config(
     save_weights: bool = True
 ) -> None:
     """
-    Salvează configurația completă a modelului.
+    Salvează configurația completă a modelului într-un singur fișier .pth.
+    Include: state_dict + arhitectură + normalizare.
     
     Args:
         model: Modelul de salvat
         filepath: Path unde se salvează modelul
-        save_weights: Dacă True, salvează și ponderile (în PyTorch întotdeauna salvăm tot)
+        save_weights: Dacă True, salvează și ponderile
     """
     if not filepath.endswith('.pth'):
         filepath += '.pth'
     
-    # Salvează modelul complet
+    # Salvează checkpoint complet cu toată configurația
     torch.save({
         'model_state_dict': model.state_dict(),
-        'model_class': model.__class__.__name__,
+        'architecture': {
+            'base': 'resnet18',
+            'num_classes': NUM_CLASSES,
+            'img_size': list(IMG_SIZE),
+            'modifications': {
+                'conv1': {'kernel_size': 3, 'stride': 1, 'padding': 1, 'bias': False},
+                'maxpool': 'Identity',
+                'fc': {'in_features': 512, 'out_features': NUM_CLASSES}
+            }
+        },
+        'normalization': {
+            'mean': [0.4914, 0.4822, 0.4465],
+            'std': [0.2023, 0.1994, 0.2010]
+        },
+        'classes': CIFAR10_CLASSES,
         'optimizer_state_dict': model.optimizer.state_dict() if hasattr(model, 'optimizer') else None,
     }, filepath)
 
+
 def load_model_config(filepath: str) -> nn.Module:
     """
-    Încarcă configurația completă a modelului.
+    Încarcă configurația completă a modelului dintr-un fișier .pth.
     
     Args:
         filepath: Path către fișierul cu model
@@ -612,18 +633,38 @@ def load_model_config(filepath: str) -> nn.Module:
     
     checkpoint = torch.load(filepath, map_location=DEVICE)
     
-    # Creează un model nou
-    model = create_model()
+    # Reconstruiește arhitectura din checkpoint
+    if isinstance(checkpoint, dict) and 'architecture' in checkpoint:
+        arch = checkpoint['architecture']
+        model = torchvision.models.resnet18(weights=None)
+        mod = arch['modifications']
+        model.conv1 = nn.Conv2d(3, 64, **mod['conv1'])
+        model.maxpool = nn.Identity()
+        model.fc = nn.Linear(mod['fc']['in_features'], mod['fc']['out_features'])
+    else:
+        # Fallback la arhitectura hardcodată
+        model = _create_resnet18_cifar10()
     
-    # Încarcă state dict
-    model.load_state_dict(checkpoint['model_state_dict'])
+    model.to(DEVICE)
+    
+    # Încarcă ponderile
+    if isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
+        model.load_state_dict(checkpoint['model_state_dict'])
+    elif isinstance(checkpoint, dict):
+        model.load_state_dict(checkpoint)
+    elif isinstance(checkpoint, nn.Module):
+        model.load_state_dict(checkpoint.state_dict())
+    
+    # Compilează modelul
+    _model_compile(model)
     
     # Încarcă optimizer state dacă există
-    if 'optimizer_state_dict' in checkpoint and checkpoint['optimizer_state_dict'] is not None:
-        if hasattr(model, 'optimizer'):
+    if isinstance(checkpoint, dict) and 'optimizer_state_dict' in checkpoint:
+        if checkpoint['optimizer_state_dict'] is not None and hasattr(model, 'optimizer'):
             model.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     
     return model
+
 
 def save_weights_only(model: nn.Module, filepath: str) -> None:
     """
@@ -633,12 +674,12 @@ def save_weights_only(model: nn.Module, filepath: str) -> None:
         model: Modelul din care se salvează ponderile
         filepath: Path unde se salvează ponderile
     """
-    if not filepath.endswith('.weights.h5'):
-        # Păstrăm extensia .weights.h5 pentru compatibilitate cu TF
-        # dar salvăm în format PyTorch
+    if filepath.endswith('.weights.h5'):
+        # Păstrăm extensia .weights.pth pentru PyTorch
         filepath = filepath.replace('.weights.h5', '.weights.pth')
     
     torch.save(model.state_dict(), filepath)
+
 
 def load_weights_only(model: nn.Module, filepath: str) -> nn.Module:
     """
@@ -657,6 +698,7 @@ def load_weights_only(model: nn.Module, filepath: str) -> nn.Module:
     model.load_state_dict(torch.load(filepath, map_location=DEVICE))
     
     return model
+
 
 # ============================================================================
 # 7. PIPELINE COMPLET
