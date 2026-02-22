@@ -257,7 +257,11 @@ function AppContent() {
                     console.log(`[Load] Restoring completed simulation with results:`, result.results);
 
                     // Restore the orchestrator status from saved results
+                    // Also clear isRunning/currentTaskId so OutputCell shows
+                    // the completed view instead of the loading spinner + cancel button
                     updateFileSimState(fileId, {
+                        isRunning: false,
+                        currentTaskId: null,
                         orchestratorStatus: {
                             status: 'completed',
                             results_data: result.results,
