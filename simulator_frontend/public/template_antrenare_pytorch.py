@@ -27,7 +27,7 @@ CIFAR10_CLASSES = [
 ]
 NUM_CLASSES = 10
 IMG_SIZE = (32, 32)
-HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10"
+HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10-pytorch"
 MODEL_FILENAME = "ResNet18_CIFAR10.pth"
 
 # Device configuration

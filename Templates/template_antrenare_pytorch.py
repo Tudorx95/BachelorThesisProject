@@ -27,7 +27,7 @@ CIFAR10_CLASSES = [
 ]
 NUM_CLASSES = 10
 IMG_SIZE = (32, 32)
-HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10"
+HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10-pytorch"
 MODEL_FILENAME = "ResNet18_CIFAR10.pth"
 
 # Device configuration
@@ -100,7 +100,7 @@ def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
         train_dataset,
         batch_size=32,
         shuffle=True,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -108,7 +108,7 @@ def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
         test_dataset,
         batch_size=32,
         shuffle=False,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -188,7 +188,7 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, 
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -196,7 +196,7 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, 
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     

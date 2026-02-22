@@ -412,7 +412,8 @@ async def poll_orchestrator_status(task_id: str):
                 active_tasks[task_id]["status"] = status_data
                 
                 if status_data.get("status") in ["completed", "error", "cancelled"]:
-                    if status_data.get("status") == "completed":
+                    final_status = status_data.get("status")
+                    if final_status == "completed":
                         # Fetch results only for completed tasks
                         results_response = requests.get(f"{ORCHESTRATOR_URL}/results/{task_id}", headers=headers)
                         if results_response.ok:
@@ -422,12 +423,48 @@ async def poll_orchestrator_status(task_id: str):
                                 results_data["config"] = active_tasks[task_id]["config"]
                             active_tasks[task_id]["results_data"] = results_data
                             logger.info(f"Results with config for task {task_id}: {results_data}")
+                            # Save to DB so results persist even if browser is closed
+                            save_results_to_db(task_id, results_data, "completed")
+                    elif final_status in ["error", "cancelled"]:
+                        # Update DB status for error/cancelled tasks too
+                        save_results_to_db(task_id, None, final_status)
                     break
             
             await asyncio.sleep(5)  # Poll every 5 seconds
         except Exception as e:
             logger.error(f"Error polling orchestrator: {str(e)}")
             await asyncio.sleep(5)
+
+
+def save_results_to_db(task_id: str, results_data: dict, status: str = "completed"):
+    """Save simulation results directly to DB (called from background poller).
+    
+    This ensures results are persisted even when the browser/WebSocket
+    is disconnected. The frontend's saveSimulationResults() serves as
+    a harmless backup — if both save, the second just overwrites.
+    """
+    db = SessionLocal()
+    try:
+        sim = db.query(SimulationResult).filter(
+            SimulationResult.task_id == task_id
+        ).first()
+        
+        if sim:
+            if results_data is not None:
+                sim.results = results_data
+            sim.status = status
+            if status == "completed":
+                sim.completed_at = datetime.utcnow()
+            db.commit()
+            logger.info(f"Backend saved results for task {task_id} (status={status})")
+        else:
+            logger.warning(f"No DB record found for task {task_id} — frontend may not have created it yet")
+    except Exception as e:
+        logger.error(f"Error saving results to DB for task {task_id}: {e}")
+        db.rollback()
+    finally:
+        db.close()
+
 
 # Authentication endpoints
 @app.post("/api/auth/register", response_model=Token)
