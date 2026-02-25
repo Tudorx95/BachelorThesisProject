@@ -4,13 +4,22 @@ import TopBar from '../components/TopBar';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export default function ComparePage({ onBack, token, activeProjectId }) {
+export default function ComparePage({ onBack, token, activeProjectId, projects }) {
     const [simulations, setSimulations] = useState([]);
     const [sim1, setSim1] = useState(null);
     const [sim2, setSim2] = useState(null);
     const [results, setResults] = useState(null);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const getFileName = (fileId) => {
+        if (!projects) return 'Unknown File';
+        for (const project of projects) {
+            const file = project.files?.find(f => f.id === fileId);
+            if (file) return file.name;
+        }
+        return 'Unknown File';
+    };
 
     // Auth headers
     const authHeaders = {
@@ -127,7 +136,7 @@ export default function ComparePage({ onBack, token, activeProjectId }) {
                                     <option value="">-- Choose Simulation --</option>
                                     {simulations.map(s => (
                                         <option key={s.id} value={s.id}>
-                                            {new Date(s.completed_at).toLocaleString()} - Task: {s.task_id.substring(0, 8)}...
+                                            {new Date(s.completed_at).toLocaleString()} - {getFileName(s.file_id)}
                                         </option>
                                     ))}
                                 </select>
@@ -145,7 +154,7 @@ export default function ComparePage({ onBack, token, activeProjectId }) {
                                     <option value="">-- Choose Simulation --</option>
                                     {simulations.map(s => (
                                         <option key={s.id} value={s.id}>
-                                            {new Date(s.completed_at).toLocaleString()} - Task: {s.task_id.substring(0, 8)}...
+                                            {new Date(s.completed_at).toLocaleString()} - {getFileName(s.file_id)}
                                         </option>
                                     ))}
                                 </select>
@@ -185,11 +194,11 @@ export default function ComparePage({ onBack, token, activeProjectId }) {
                 {results && (
                     <div className="grid grid-cols-2 gap-4 mt-6">
                         <ResultBox
-                            title={`Simulation 1 (${results.simulation1.task_id.substring(0, 8)}...)`}
+                            title={`Simulation 1 (${getFileName(results.simulation1.file_id)})`}
                             data={results.simulation1}
                         />
                         <ResultBox
-                            title={`Simulation 2 (${results.simulation2.task_id.substring(0, 8)}...)`}
+                            title={`Simulation 2 (${getFileName(results.simulation2.file_id)})`}
                             data={results.simulation2}
                         />
                     </div>

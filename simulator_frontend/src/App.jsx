@@ -46,8 +46,12 @@ function AppContent() {
     const [projects, setProjects] = useState([]);
 
     // Template content state
-    const [templateTensorflow, setTemplateTensorflow] = useState('# TensorFlow Template\n');
-    const [templatePytorch, setTemplatePytorch] = useState('# PyTorch Template\n');
+    const [templateTensorflow, setTemplateTensorflow] = useState(
+        () => localStorage.getItem('custom_template_tf_v3') || '# TensorFlow Template\n'
+    );
+    const [templatePytorch, setTemplatePytorch] = useState(
+        () => localStorage.getItem('custom_template_pt_v3') || '# PyTorch Template\n'
+    );
     const [activeTemplate, setActiveTemplate] = useState('tensorflow');
 
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
@@ -107,19 +111,22 @@ function AppContent() {
     useEffect(() => {
         const loadTemplates = async () => {
             try {
+                const tfSaved = localStorage.getItem('custom_template_tf_v3');
+                const ptSaved = localStorage.getItem('custom_template_pt_v3');
+
                 const [tfResponse, ptResponse] = await Promise.all([
                     fetch('/template_antrenare_tensorflow.py'),
                     fetch('/template_antrenare_pytorch.py')
                 ]);
                 if (tfResponse.ok) {
                     const content = await tfResponse.text();
-                    setTemplatePytorch(content);
+                    if (!tfSaved) setTemplateTensorflow(content);
                 } else {
                     console.warn('Failed to load TensorFlow template');
                 }
                 if (ptResponse.ok) {
                     const content = await ptResponse.text();
-                    setTemplateTensorflow(content);
+                    if (!ptSaved) setTemplatePytorch(content);
                 } else {
                     console.warn('Failed to load PyTorch template');
                 }
@@ -143,6 +150,17 @@ function AppContent() {
             loadSimulationResults(activeFileId);
         }
     }, [activeFileId, isAuthenticated]);
+
+    // Auto-detect template type when switching files
+    useEffect(() => {
+        if (activeFile && activeFile.content) {
+            if (activeFile.content.includes('import torch') || activeFile.content.includes('import torchvision')) {
+                setActiveTemplate('pytorch');
+            } else if (activeFile.content.includes('import tensorflow') || activeFile.content.includes('import keras')) {
+                setActiveTemplate('tensorflow');
+            }
+        }
+    }, [activeFileId]);
 
     // Run simulation after config is saved if pending
     useEffect(() => {
@@ -599,6 +617,15 @@ function AppContent() {
     const handleContentChange = async (newContent) => {
         if (!activeFile) return;
 
+        // Persist the changes to the user's custom template
+        if (activeTemplate === 'tensorflow') {
+            setTemplateTensorflow(newContent);
+            localStorage.setItem('custom_template_tf_v3', newContent);
+        } else {
+            setTemplatePytorch(newContent);
+            localStorage.setItem('custom_template_pt_v3', newContent);
+        }
+
         try {
             const response = await fetch(`${API_URL}/api/files/${activeFile.id}`, {
                 method: 'PUT',
@@ -999,6 +1026,7 @@ function AppContent() {
                 onBack={() => setShowComparePage(false)}
                 token={token}
                 activeProjectId={activeProjectId}
+                projects={projects}
             />
         );
     }
@@ -1010,6 +1038,7 @@ function AppContent() {
                 onBack={() => setShowGraphsPage(false)}
                 token={token}
                 activeProjectId={activeProjectId}
+                projects={projects}
             />
         );
     }
@@ -1056,9 +1085,34 @@ function AppContent() {
                                     activeTemplate={activeTemplate}
                                     onToggleTemplate={() => {
                                         const newTemplate = activeTemplate === 'tensorflow' ? 'pytorch' : 'tensorflow';
+
+                                        // Update active template state first
                                         setActiveTemplate(newTemplate);
+
+                                        // Call handleContentChange with the new template content, but we need
+                                        // to temporarily bypass the persistence logic in handleContentChange
+                                        // so it doesn't overwrite the new template with the old content
                                         const newContent = newTemplate === 'tensorflow' ? templateTensorflow : templatePytorch;
-                                        handleContentChange(newContent);
+
+                                        // Instead of calling handleContentChange directly (which persists to the newly set activeTemplate),
+                                        // we just do the API call here to avoid corrupting localStorage
+                                        if (activeFile) {
+                                            fetch(`${API_URL}/api/files/${activeFile.id}`, {
+                                                method: 'PUT',
+                                                headers: authHeaders,
+                                                body: JSON.stringify({ content: newContent })
+                                            }).then(response => {
+                                                if (response.ok) {
+                                                    const updatedProjects = projects.map(p => ({
+                                                        ...p,
+                                                        files: p.files.map(f =>
+                                                            f.id === activeFile.id ? { ...f, content: newContent } : f
+                                                        )
+                                                    }));
+                                                    setProjects(updatedProjects);
+                                                }
+                                            }).catch(err => console.error('Error updating file during template switch:', err));
+                                        }
                                     }}
                                 />
                             </div>

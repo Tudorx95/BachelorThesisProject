@@ -5,11 +5,20 @@ import TopBar from '../components/TopBar';
 
 const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000';
 
-export default function GraphsPage({ onBack, token, activeProjectId }) {
+export default function GraphsPage({ onBack, token, activeProjectId, projects }) {
     const [simulations, setSimulations] = useState([]);
     const [selectedSimulations, setSelectedSimulations] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
+
+    const getFileName = (fileId) => {
+        if (!projects) return 'Unknown File';
+        for (const project of projects) {
+            const file = project.files?.find(f => f.id === fileId);
+            if (file) return file.name;
+        }
+        return 'Unknown File';
+    };
 
     // Auth headers
     const authHeaders = {
@@ -79,7 +88,7 @@ export default function GraphsPage({ onBack, token, activeProjectId }) {
                 const value = analysis[metric.key] || 0;
                 dataPoint[`sim${index + 1}`] = value;
                 dataPoint[`sim${index + 1}_name`] = `Sim ${index + 1}`;
-                dataPoint[`sim${index + 1}_taskId`] = sim.task_id.substring(0, 8);
+                dataPoint[`sim${index + 1}_taskId`] = getFileName(sim.file_id);
             });
 
             return dataPoint;
@@ -137,16 +146,15 @@ export default function GraphsPage({ onBack, token, activeProjectId }) {
                                 <div
                                     key={sim.id}
                                     onClick={() => toggleSimulation(sim.id)}
-                                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
-                                        selectedSimulations.includes(sim.id)
+                                    className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedSimulations.includes(sim.id)
                                             ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
                                             : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
-                                    }`}
+                                        }`}
                                 >
                                     <div className="flex items-start justify-between">
                                         <div className="flex-1">
                                             <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                                                Task: {sim.task_id.substring(0, 8)}...
+                                                File: {getFileName(sim.file_id)}
                                             </div>
                                             <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                 {new Date(sim.completed_at).toLocaleString()}
@@ -156,11 +164,10 @@ export default function GraphsPage({ onBack, token, activeProjectId }) {
                                                 <div>Rounds: {sim.config?.ROUNDS}</div>
                                             </div>
                                         </div>
-                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${
-                                            selectedSimulations.includes(sim.id)
+                                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${selectedSimulations.includes(sim.id)
                                                 ? 'border-blue-500 bg-blue-500'
                                                 : 'border-gray-300 dark:border-gray-600'
-                                        }`}>
+                                            }`}>
                                             {selectedSimulations.includes(sim.id) && (
                                                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 13l4 4L19 7" />
@@ -230,7 +237,7 @@ export default function GraphsPage({ onBack, token, activeProjectId }) {
                                                 key={`sim${index + 1}`}
                                                 dataKey={`sim${index + 1}`}
                                                 fill={simColors[index % simColors.length]}
-                                                name={`Simulation ${index + 1} (${sim.task_id.substring(0, 8)})`}
+                                                name={`Simulation ${index + 1} (${getFileName(sim.file_id)})`}
                                                 radius={[4, 4, 0, 0]}
                                                 minPointSize={5}
                                             />
@@ -269,7 +276,7 @@ export default function GraphsPage({ onBack, token, activeProjectId }) {
                                                         <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
                                                             Sim {index + 1}
                                                             <div className="text-xs text-gray-500 dark:text-gray-400">
-                                                                {sim.task_id.substring(0, 8)}...
+                                                                {getFileName(sim.file_id)}
                                                             </div>
                                                         </td>
                                                         <td className="text-right py-3 px-4 font-mono text-purple-600 dark:text-purple-400">

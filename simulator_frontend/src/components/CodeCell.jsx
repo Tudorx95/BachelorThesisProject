@@ -55,13 +55,13 @@ export default function CodeCell({ content, handleContentChange, handleRun, isRu
                         onClick={onToggleTemplate}
                         disabled={isCompleted || isRunning}
                         className={`flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded transition-colors ${activeTemplate === 'tensorflow'
-                            ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60'
-                            : 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
+                            ? 'bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 hover:bg-red-200 dark:hover:bg-red-900/60'
+                            : 'bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 hover:bg-orange-200 dark:hover:bg-orange-900/60'
                             } disabled:opacity-50 disabled:cursor-not-allowed`}
                         title={`Switch to ${activeTemplate === 'tensorflow' ? 'PyTorch' : 'TensorFlow'} template`}
                     >
                         <RefreshCw className="w-3.5 h-3.5" />
-                        <span>{activeTemplate === 'tensorflow' ? '🔶 TensorFlow' : '🔥 PyTorch'}</span>
+                        <span>{activeTemplate === 'tensorflow' ? '🔥 PyTorch' : '🔶 TensorFlow'}</span>
                     </button>
                 </div>
                 <div className="flex items-center gap-2">
