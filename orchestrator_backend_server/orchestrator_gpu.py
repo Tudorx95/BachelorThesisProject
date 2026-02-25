@@ -390,9 +390,48 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
 
+        # ========== STEP 6: FL simulation (Clean + Data Poison Protection) ==========
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 6, 
+            "message": f"Running FL simulation (clean + DP protection) on {gpu_info}...", 
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+        
+        # Check cancellation
+        if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
+            raise InterruptedError("Simulation cancelled by user")
+
+        # Run clean DP FL simulation WITH GPU
+        test_file_clean_dp = user_dir / "results" / "clean_dp_metrics.json"
+        test_file_clean_dp.parent.mkdir(parents=True, exist_ok=True)
+        
+        cmd = (
+            f"{conda_activate} && "
+            f"python {fd_script} "
+            f"{test_file_clean_dp} "                  # test_file (full path)
+            f"{config['N']} "
+            f"{config['M']} "
+            f"{model_path} "                        # NN_NAME_PATH (full model path)
+            f"{user_dir / 'clean_data'} "
+            f"{user_dir / 'clean_data'} "
+            f"{config['R']} "
+            f"{config['ROUNDS']} "
+            f"--strategy {config['strategy']} "
+            f"--data_poison_protection {config.get('data_poison_protection', 'fedavg')}"
+        )
+
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
+        if result.returncode != 0:
+            error_msg = f"Clean DP FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            app.logger.error(error_msg)
+            return
+
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 7, 
             "message": f"Running FL simulation (poisoned) on {gpu_info}...", 
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -429,10 +468,10 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
 
-        # ========== STEP 7: FL simulation with Data Poison Protection ==========
+        # ========== STEP 8: FL simulation with Data Poison Protection ==========
         shared_simulations[task_id] = {
             "status": "running",
-            "step": 7,
+            "step": 8,
             "message": f"Running FL simulation (poisoned + DP protection) on {gpu_info}...",
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -468,10 +507,10 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
 
-        # ========== STEP 8: Generate results ==========
+        # ========== STEP 9: Generate results ==========
         shared_simulations[task_id] = {
             "status": "running",
-            "step": 8,
+            "step": 9,
             "message": "Generating analysis...",
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -484,6 +523,13 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         else:
             app.logger.error(f"Clean results file not found or empty: {test_file_clean}")
             clean_results = {"final_accuracy": 0.0}
+
+        if test_file_clean_dp.exists() and test_file_clean_dp.stat().st_size > 0:
+            with open(test_file_clean_dp) as f:
+                clean_dp_results = json.load(f)
+        else:
+            app.logger.error(f"Clean DP results file not found or empty: {test_file_clean_dp}")
+            clean_dp_results = {"final_accuracy": 0.0}
 
         if test_file_poisoned.exists() and test_file_poisoned.stat().st_size > 0:
             with open(test_file_poisoned) as f:
@@ -500,6 +546,7 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             poisoned_dp_results = {"final_accuracy": 0.0}
 
         clean_accuracy = clean_results.get('final_accuracy', 0)
+        clean_dp_accuracy = clean_dp_results.get('final_accuracy', 0)
         poisoned_accuracy = poisoned_results.get('final_accuracy', 0)
         poisoned_dp_accuracy = poisoned_dp_results.get('final_accuracy', 0)
 
@@ -507,6 +554,10 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         clean_precision = clean_results.get('final_precision', 0)
         clean_recall = clean_results.get('final_recall', 0)
         clean_f1 = clean_results.get('final_f1', 0)
+
+        clean_dp_precision = clean_dp_results.get('final_precision', 0)
+        clean_dp_recall = clean_dp_results.get('final_recall', 0)
+        clean_dp_f1 = clean_dp_results.get('final_f1', 0)
 
         poisoned_precision = poisoned_results.get('final_precision', 0)
         poisoned_recall = poisoned_results.get('final_recall', 0)
@@ -523,6 +574,12 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             if history and len(history) > 0:
                 clean_accuracy = history[-1].get('accuracy', 0)
                 app.logger.info(f"[{task_id}] Extracted clean_accuracy from round_metrics_history: {clean_accuracy}")
+
+        if clean_dp_accuracy == 0 and 'round_metrics_history' in clean_dp_results:
+            history = clean_dp_results['round_metrics_history']
+            if history and len(history) > 0:
+                clean_dp_accuracy = history[-1].get('accuracy', 0)
+                app.logger.info(f"[{task_id}] Extracted clean_dp_accuracy from round_metrics_history: {clean_dp_accuracy}")
 
         if poisoned_accuracy == 0 and 'round_metrics_history' in poisoned_results:
             history = poisoned_results['round_metrics_history']
@@ -554,15 +611,20 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         analysis = {
             'init_accuracy': init_accuracy,
             'clean_accuracy': clean_accuracy,
+            'clean_dp_accuracy': clean_dp_accuracy,
             'poisoned_accuracy': poisoned_accuracy,
             'poisoned_dp_accuracy': poisoned_dp_accuracy,
             'accuracy_drop': clean_accuracy - poisoned_accuracy,
             'drop_clean_init': clean_accuracy - init_accuracy,
+            'drop_clean_dp_init': clean_dp_accuracy - init_accuracy,
             'drop_poison_init': poisoned_accuracy - init_accuracy,
             'drop_poison_dp_init': poisoned_dp_accuracy - init_accuracy,
             'clean_precision': clean_precision,
             'clean_recall': clean_recall,
             'clean_f1': clean_f1,
+            'clean_dp_precision': clean_dp_precision,
+            'clean_dp_recall': clean_dp_recall,
+            'clean_dp_f1': clean_dp_f1,
             'poisoned_precision': poisoned_precision,
             'poisoned_recall': poisoned_recall,
             'poisoned_f1': poisoned_f1,
@@ -570,6 +632,7 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             'poisoned_dp_recall': poisoned_dp_recall,
             'poisoned_dp_f1': poisoned_dp_f1,
             'clean_metrics': clean_results,
+            'clean_dp_metrics': clean_dp_results,
             'poisoned_metrics': poisoned_results,
             'poisoned_dp_metrics': poisoned_dp_results,
             'gpu_used': gpu_info,
@@ -585,10 +648,12 @@ Task: {task_id}
 GPU: {gpu_info}
 Init Accuracy: {analysis['init_accuracy']:.4f}
 Clean Accuracy: {analysis['clean_accuracy']:.4f}
+Clean DP Accuracy: {analysis['clean_dp_accuracy']:.4f}
 Poisoned Accuracy: {analysis['poisoned_accuracy']:.4f}
 Data Poison Protection Accuracy: {analysis['poisoned_dp_accuracy']:.4f}
 Drop (Clean - Poisoned): {analysis['accuracy_drop']:.4f}
 Drop (Clean - Init): {analysis['drop_clean_init']:.4f}
+Drop (Clean DP - Init): {analysis['drop_clean_dp_init']:.4f}
 Drop (Poisoned - Init): {analysis['drop_poison_init']:.4f}
 Drop (Poisoned_DP - Init): {analysis['drop_poison_dp_init']:.4f}
 Data Poison Protection Method: {analysis['data_poison_protection_method']}
@@ -596,6 +661,9 @@ Data Poison Protection Method: {analysis['data_poison_protection_method']}
 Clean Precision: {analysis['clean_precision']:.4f}
 Clean Recall: {analysis['clean_recall']:.4f}
 Clean F1 Score: {analysis['clean_f1']:.4f}
+Clean DP Precision: {analysis['clean_dp_precision']:.4f}
+Clean DP Recall: {analysis['clean_dp_recall']:.4f}
+Clean DP F1 Score: {analysis['clean_dp_f1']:.4f}
 Poisoned Precision: {analysis['poisoned_precision']:.4f}
 Poisoned Recall: {analysis['poisoned_recall']:.4f}
 Poisoned F1 Score: {analysis['poisoned_f1']:.4f}

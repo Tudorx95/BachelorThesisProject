@@ -76,6 +76,7 @@ export default function GraphsPage({ onBack, token, activeProjectId, projects })
         const metrics = [
             { key: 'init_accuracy', label: 'Init Accuracy', color: '#8B5CF6' },
             { key: 'clean_accuracy', label: 'Clean Accuracy', color: '#10B981' },
+            { key: 'clean_dp_accuracy', label: 'Clean + DP Protection', color: '#059669' },
             { key: 'poisoned_accuracy', label: 'Poisoned Accuracy', color: '#EF4444' },
             { key: 'poisoned_dp_accuracy', label: 'Poisoned + DP Protection', color: '#06B6D4' }
         ];
@@ -147,8 +148,8 @@ export default function GraphsPage({ onBack, token, activeProjectId, projects })
                                     key={sim.id}
                                     onClick={() => toggleSimulation(sim.id)}
                                     className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${selectedSimulations.includes(sim.id)
-                                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                                            : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
+                                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                                        : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-600'
                                         }`}
                                 >
                                     <div className="flex items-start justify-between">
@@ -165,8 +166,8 @@ export default function GraphsPage({ onBack, token, activeProjectId, projects })
                                             </div>
                                         </div>
                                         <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${selectedSimulations.includes(sim.id)
-                                                ? 'border-blue-500 bg-blue-500'
-                                                : 'border-gray-300 dark:border-gray-600'
+                                            ? 'border-blue-500 bg-blue-500'
+                                            : 'border-gray-300 dark:border-gray-600'
                                             }`}>
                                             {selectedSimulations.includes(sim.id) && (
                                                 <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -261,6 +262,7 @@ export default function GraphsPage({ onBack, token, activeProjectId, projects })
                                             <th className="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Simulation</th>
                                             <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Init Acc.</th>
                                             <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Clean Acc.</th>
+                                            <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Clean+DP Acc.</th>
                                             <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Poisoned Acc.</th>
                                             <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Poisoned+DP Acc.</th>
                                             <th className="text-right py-3 px-4 text-gray-700 dark:text-gray-300">Accuracy Drop</th>
@@ -284,6 +286,9 @@ export default function GraphsPage({ onBack, token, activeProjectId, projects })
                                                         </td>
                                                         <td className="text-right py-3 px-4 font-mono text-green-600 dark:text-green-400">
                                                             {analysis.clean_accuracy?.toFixed(4) || 'N/A'}
+                                                        </td>
+                                                        <td className="text-right py-3 px-4 font-mono text-emerald-600 dark:text-emerald-400">
+                                                            {analysis.clean_dp_accuracy?.toFixed(4) || 'N/A'}
                                                         </td>
                                                         <td className="text-right py-3 px-4 font-mono text-red-600 dark:text-red-400">
                                                             {analysis.poisoned_accuracy?.toFixed(4) || 'N/A'}

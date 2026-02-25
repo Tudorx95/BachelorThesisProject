@@ -12,9 +12,10 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
         { id: 3, name: 'Data Generation', key: 'data_generation' },
         { id: 4, name: 'Data Poisoning', key: 'data_poisoning' },
         { id: 5, name: 'FL Simulation (Clean)', key: 'fl_simulation_clean' },
-        { id: 6, name: 'FL Simulation (Poisoned)', key: 'fl_simulation_poisoned' },
-        { id: 7, name: 'FL Simulation (Data Poison Protection)', key: 'fl_simulation_poisoned_dp' },
-        { id: 8, name: 'Generating Results', key: 'generate_results' }
+        { id: 6, name: 'FL Simulation (Clean Data Protection)', key: 'fl_simulation_clean_dp' },
+        { id: 7, name: 'FL Simulation (Poisoned)', key: 'fl_simulation_poisoned' },
+        { id: 8, name: 'FL Simulation (Data Poison Protection)', key: 'fl_simulation_poisoned_dp' },
+        { id: 9, name: 'Generating Results', key: 'generate_results' }
     ];
 
     // Debug logging to see what data we're receiving

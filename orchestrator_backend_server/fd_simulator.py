@@ -346,14 +346,15 @@ class EnhancedFederatedServer:
     def _aggregate_weights_fedavg(self, client_weights, client_sizes):
         """FedAvg: weighted average based on dataset size"""
         total_size = sum(client_sizes)
-        avg_weights = [np.zeros_like(w) for w in client_weights[0]]
+        avg_weights = [np.zeros_like(w, dtype=np.float64) for w in client_weights[0]]
         
         for client_w, size in zip(client_weights, client_sizes):
             weight = size / total_size
             for i, w in enumerate(client_w):
                 avg_weights[i] += w * weight
         
-        return avg_weights
+        # Cast back to original dtypes
+        return [avg_weights[i].astype(w.dtype) for i, w in enumerate(client_weights[0])]
     
     def _aggregate_weights_krum(self, client_weights, num_malicious):
         """Krum: selects one client with smallest distance sum"""
@@ -386,7 +387,8 @@ class EnhancedFederatedServer:
             layer_weights = [cw[layer_idx] for cw in client_weights]
             layer_weights_sorted = np.sort(layer_weights, axis=0)
             trimmed = layer_weights_sorted[num_trim:-num_trim] if num_trim > 0 else layer_weights_sorted
-            aggregated.append(np.mean(trimmed, axis=0))
+            mean_vals = np.mean(trimmed, axis=0)
+            aggregated.append(mean_vals.astype(client_weights[0][layer_idx].dtype))
         
         return aggregated
     
@@ -395,7 +397,8 @@ class EnhancedFederatedServer:
         aggregated = []
         for layer_idx in range(len(client_weights[0])):
             layer_weights = [cw[layer_idx] for cw in client_weights]
-            aggregated.append(np.median(layer_weights, axis=0))
+            median_vals = np.median(layer_weights, axis=0)
+            aggregated.append(median_vals.astype(client_weights[0][layer_idx].dtype))
         return aggregated
     
     def _aggregate_weights(self, client_weights, client_sizes):

@@ -142,6 +142,8 @@ export default function ExportPDFButton({ results, fileName }) {
                 y += 6;
                 pdf.text(`Clean Accuracy: ${results.analysis.clean_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
+                pdf.text(`Clean + DP Protection Accuracy: ${results.analysis.clean_dp_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
                 pdf.text(`Poisoned Accuracy: ${results.analysis.poisoned_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Poisoned + DP Protection Accuracy: ${results.analysis.poisoned_dp_accuracy?.toFixed(4) || 'N/A'}`, 25, y);
@@ -149,6 +151,8 @@ export default function ExportPDFButton({ results, fileName }) {
                 pdf.text(`Drop (Clean - Poisoned): ${results.analysis.accuracy_drop?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Drop (Clean - Init): ${results.analysis.drop_clean_init?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Drop (Clean DP - Init): ${results.analysis.drop_clean_dp_init?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Drop (Poisoned - Init): ${results.analysis.drop_poison_init?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
@@ -171,6 +175,12 @@ export default function ExportPDFButton({ results, fileName }) {
                 pdf.text(`Clean Recall: ${results.analysis.clean_recall?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;
                 pdf.text(`Clean F1 Score: ${results.analysis.clean_f1?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 8;
+                pdf.text(`Clean DP Precision: ${results.analysis.clean_dp_precision?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Clean DP Recall: ${results.analysis.clean_dp_recall?.toFixed(4) || 'N/A'}`, 25, y);
+                y += 6;
+                pdf.text(`Clean DP F1 Score: ${results.analysis.clean_dp_f1?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 8;
                 pdf.text(`Poisoned Precision: ${results.analysis.poisoned_precision?.toFixed(4) || 'N/A'}`, 25, y);
                 y += 6;

@@ -338,6 +338,12 @@ function ResultBox({ title, data }) {
                             {analysis.clean_accuracy?.toFixed(4) || 'N/A'}
                         </span>
                     </div>
+                    <div className="flex justify-between p-2 bg-emerald-50 dark:bg-emerald-900/20 rounded border border-emerald-200 dark:border-emerald-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Clean + DP Protection Accuracy:</strong>
+                        <span className="font-mono text-emerald-700 dark:text-emerald-400 text-base font-bold">
+                            {analysis.clean_dp_accuracy?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
                     <div className="flex justify-between p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-200 dark:border-red-800">
                         <strong className="text-gray-700 dark:text-gray-300">Poisoned Accuracy:</strong>
                         <span className="font-mono text-red-700 dark:text-red-400 text-base font-bold">
@@ -360,6 +366,12 @@ function ResultBox({ title, data }) {
                         <strong className="text-gray-700 dark:text-gray-300">Drop (Clean - Init):</strong>
                         <span className="font-mono text-yellow-700 dark:text-yellow-400 text-base font-bold">
                             {analysis.drop_clean_init?.toFixed(4) || 'N/A'}
+                        </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-amber-50 dark:bg-amber-900/20 rounded border border-amber-200 dark:border-amber-800">
+                        <strong className="text-gray-700 dark:text-gray-300">Drop (Clean DP - Init):</strong>
+                        <span className="font-mono text-amber-700 dark:text-amber-400 text-base font-bold">
+                            {analysis.drop_clean_dp_init?.toFixed(4) || 'N/A'}
                         </span>
                     </div>
                     <div className="flex justify-between p-2 bg-pink-50 dark:bg-pink-900/20 rounded border border-pink-200 dark:border-pink-800">
