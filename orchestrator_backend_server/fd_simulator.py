@@ -380,7 +380,9 @@ class EnhancedFederatedServer:
     def _aggregate_weights_trimmed_mean(self, client_weights, trim_ratio=0.1):
         """Trimmed Mean: remove top/bottom trim_ratio% and average"""
         num_clients = len(client_weights)
-        num_trim = max(1, int(num_clients * trim_ratio))
+        num_trim = int(num_clients * trim_ratio)
+        if num_trim * 2 >= num_clients:
+            num_trim = max(0, (num_clients - 1) // 2)
         
         aggregated = []
         for layer_idx in range(len(client_weights[0])):
@@ -401,6 +403,94 @@ class EnhancedFederatedServer:
             aggregated.append(median_vals.astype(client_weights[0][layer_idx].dtype))
         return aggregated
     
+    def _aggregate_weights_foolsgold(self, client_weights):
+        """
+        FoolsGold-inspired defense: penalizează clienți cu gradienți anti-corelați.
+        
+        Referință: Fung et al. "Mitigating Sybils in Federated Learning Poisoning" 2020
+        
+        Principiu: 
+        1. Calculează update-ul fiecărui client (diferența față de ponderile globale)
+        2. Măsoară cosine similarity între toți clienții  
+        3. Clienții onești au update-uri diverse (similaritate mică între ei)
+        4. Clienții malițioși (label flip) au update-uri corelate între ei
+           dar anti-corelate cu clienții onești
+        5. Penalizează clienții cu similaritate mare (probabil coluziune)
+           și pe cei anti-corelați cu media (probabil poisoning)
+        
+        Funcționează pentru label_flip deoarece:
+        - Label flip produce gradienți de magnitudine normală (trece de trimmed_mean)
+        - DAR cu direcție semantică opusă (cosine similarity negativă cu clienții onești)
+        - FoolsGold detectează exact această corelație/anti-corelație
+        """
+        num_clients = len(client_weights)
+        
+        if num_clients < 2:
+            return self._aggregate_weights_fedavg(client_weights, [1] * num_clients)
+        
+        # Step 1: Flatten weights to vectors for cosine similarity
+        flat_weights = []
+        for cw in client_weights:
+            flat = np.concatenate([w.flatten().astype(np.float64) for w in cw])
+            flat_weights.append(flat)
+        
+        # Step 2: Compute updates (difference from global weights)
+        global_flat = np.concatenate([w.flatten().astype(np.float64) for w in self.global_weights])
+        updates = [fw - global_flat for fw in flat_weights]
+        
+        # Step 3: Compute pairwise cosine similarity matrix
+        norms = [np.linalg.norm(u) for u in updates]
+        cs_matrix = np.zeros((num_clients, num_clients))
+        
+        for i in range(num_clients):
+            for j in range(i + 1, num_clients):
+                if norms[i] > 1e-10 and norms[j] > 1e-10:
+                    cs = np.dot(updates[i], updates[j]) / (norms[i] * norms[j])
+                    cs_matrix[i][j] = cs
+                    cs_matrix[j][i] = cs
+        
+        # Step 4: Compute trust scores (FoolsGold logic)
+        # - High pairwise similarity = likely colluding (Sybil attack)
+        # - Penalize clients whose updates are too similar to each other
+        scores = np.zeros(num_clients)
+        for i in range(num_clients):
+            # Maximum similarity to any other client
+            max_sim = np.max(np.abs(cs_matrix[i]))
+            # FoolsGold: score = 1 - max_similarity (penalize high similarity)
+            scores[i] = 1.0 - max_sim
+        
+        # Step 5: Additional check — penalize anti-correlation with majority
+        # Compute mean update direction (robust: use median of cosine sims)
+        mean_update = np.mean(updates, axis=0)
+        mean_norm = np.linalg.norm(mean_update)
+        
+        if mean_norm > 1e-10:
+            for i in range(num_clients):
+                if norms[i] > 1e-10:
+                    cos_with_mean = np.dot(updates[i], mean_update) / (norms[i] * mean_norm)
+                    # Penalize clients pulling in opposite direction
+                    if cos_with_mean < 0:
+                        # Anti-correlated with majority → likely poisoner
+                        scores[i] *= max(0.0, 1.0 + cos_with_mean)  # cos=-1 → score*0
+                    else:
+                        # Aligned with majority → boost slightly
+                        scores[i] *= (0.5 + 0.5 * cos_with_mean)
+        
+        # Step 6: Normalize scores to sum to 1
+        scores = np.maximum(scores, 1e-6)  # Prevent zero division
+        scores = scores / np.sum(scores)
+        
+        logger.info(f"FoolsGold scores: {[f'{s:.4f}' for s in scores]}")
+        logger.info(f"Malicious clients: {self.malicious_clients}")
+        
+        # Step 7: Weighted average using trust scores
+        aggregated = [np.zeros_like(w, dtype=np.float64) for w in client_weights[0]]
+        for client_w, score in zip(client_weights, scores):
+            for i, w in enumerate(client_w):
+                aggregated[i] += w.astype(np.float64) * score
+        
+        return [aggregated[i].astype(client_weights[0][i].dtype) for i in range(len(aggregated))]
+    
     def _aggregate_weights(self, client_weights, client_sizes):
         """Agregare ponderi cu protecție împotriva data poisoning"""
         method = self.data_poison_protection.lower()
@@ -411,6 +501,8 @@ class EnhancedFederatedServer:
             return self._aggregate_weights_trimmed_mean(client_weights, trim_ratio=0.2)
         elif method == 'median':
             return self._aggregate_weights_median(client_weights)
+        elif method == 'foolsgold':
+            return self._aggregate_weights_foolsgold(client_weights)
         elif method == 'trimmed_mean_krum':
             trimmed = self._aggregate_weights_trimmed_mean(client_weights, trim_ratio=0.1)
             return trimmed
@@ -486,11 +578,27 @@ class EnhancedFederatedServer:
     
     def run(self):
         """Rulează simularea FL"""
-        logger.info(f"Starting FL simulation with {self.num_clients} clients ({self.num_malicious} malicious)")
-        logger.info(f"Framework: {FRAMEWORK.upper()}, Protection: {self.data_poison_protection}")
+        # Debug log file - scrie în același director cu results
+        debug_log_path = os.path.join(os.path.dirname(self.test_json_path), 
+                                       f"debug_{self.data_poison_protection}.log")
+        
+        def debug(msg):
+            """Write debug message to both logger and file"""
+            logger.info(msg)
+            try:
+                with open(debug_log_path, 'a') as f:
+                    f.write(f"[{time.strftime('%H:%M:%S')}] {msg}\n")
+            except:
+                pass
+        
+        debug(f"=== SERVER.RUN() STARTED ===")
+        debug(f"Clients: {self.num_clients}, Malicious: {self.num_malicious}")
+        debug(f"Rounds: {self.rounds}, Protection: {self.data_poison_protection}")
+        debug(f"Data folder: {self.data_folder}")
+        debug(f"Framework: {FRAMEWORK}")
         
         # Distribuie weights inițiale
-        logger.info("Distributing initial weights to clients...")
+        debug("Distributing initial weights to clients...")
         for i in range(self.num_clients):
             self.client_queues[i].put({
                 'type': 'base_weights',
@@ -498,23 +606,25 @@ class EnhancedFederatedServer:
             })
         
         # Așteaptă confirmări
+        debug(f"Waiting for {self.num_clients} client confirmations...")
         for i in range(self.num_clients):
             try:
                 msg = self.server_queue.get(timeout=60)
                 if msg['type'] != 'weights_received':
-                    logger.error(f"Unexpected message from client {msg.get('client_id', '?')}")
+                    debug(f"ERROR: Unexpected message from client {msg.get('client_id', '?')}: {msg['type']}")
             except queue.Empty:
-                logger.error(f"Timeout waiting for client confirmations")
+                debug(f"ERROR: Timeout waiting for client {i} confirmation. Only {i}/{self.num_clients} confirmed.")
+                debug(f"=== SERVER.RUN() ABORTED (timeout at confirmations) ===")
                 return
         
-        logger.info("All clients received base weights")
+        debug("All clients confirmed. Starting training rounds...")
         
         # Rundă de antrenare
         for round_nr in range(self.rounds):
             round_start = time.time()
-            logger.info(f"\n{'='*70}")
-            logger.info(f"ROUND {round_nr + 1}/{self.rounds} ({FRAMEWORK.upper()})")
-            logger.info(f"{'='*70}")
+            debug(f"\n{'='*50}")
+            debug(f"ROUND {round_nr + 1}/{self.rounds}")
+            debug(f"{'='*50}")
             
             round_updates = []
             
@@ -524,22 +634,59 @@ class EnhancedFederatedServer:
                     update = self.server_queue.get(timeout=600)
                     if update['type'] == 'round_update' and update['round'] == round_nr:
                         round_updates.append(update)
+                        debug(f"  Received update from client {update['client_id']} (acc={update.get('accuracy', 'N/A'):.4f})")
                 except queue.Empty:
-                    logger.error(f"Timeout waiting for client {i} in round {round_nr}")
+                    debug(f"  ERROR: Timeout waiting for client {i} in round {round_nr}")
+            
+            debug(f"  Received {len(round_updates)}/{self.num_clients} updates")
+            
+            if len(round_updates) == 0:
+                debug(f"  ERROR: No updates received! Skipping round.")
+                continue
             
             if len(round_updates) < self.num_clients:
-                logger.warning(f"Only {len(round_updates)}/{self.num_clients} clients responded")
+                debug(f"  WARNING: Only {len(round_updates)}/{self.num_clients} clients responded")
             
             # Agregare weights
             client_weights = [upd['weights'] for upd in round_updates]
-            client_sizes = [1] * len(round_updates)  # Presupunem dimensiuni egale
+            client_sizes = [1] * len(round_updates)
             
-            self.global_weights = self._aggregate_weights(client_weights, client_sizes)
-            set_model_weights_framework_agnostic(self.global_model, self.global_weights, self.use_template)
+            debug(f"  Aggregating with {self.data_poison_protection} ({len(client_weights)} clients, {len(client_weights[0])} layers)...")
+            try:
+                self.global_weights = self._aggregate_weights(client_weights, client_sizes)
+                debug(f"  Aggregation OK. Layers: {len(self.global_weights)}")
+                
+                # Check for NaN
+                nan_layers = [i for i, w in enumerate(self.global_weights) if np.any(np.isnan(w))]
+                if nan_layers:
+                    debug(f"  ERROR: NaN in aggregated weights at layers: {nan_layers}")
+            except Exception as e:
+                debug(f"  ERROR in aggregation: {e}")
+                import traceback
+                debug(traceback.format_exc())
+                continue
+            
+            try:
+                set_model_weights_framework_agnostic(self.global_model, self.global_weights, self.use_template)
+                debug(f"  Weights set on global model OK")
+            except Exception as e:
+                debug(f"  ERROR setting weights: {e}")
+                import traceback
+                debug(traceback.format_exc())
+                continue
             
             # Evaluare
-            eval_metrics = self._evaluate_global_model()
-            global_accuracy = eval_metrics['accuracy']
+            try:
+                eval_metrics = self._evaluate_global_model()
+                global_accuracy = eval_metrics['accuracy']
+                debug(f"  Evaluation: acc={global_accuracy:.4f}")
+            except Exception as e:
+                debug(f"  ERROR in evaluation: {e}")
+                import traceback
+                debug(traceback.format_exc())
+                eval_metrics = {'accuracy': 0.0, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}
+                global_accuracy = 0.0
+            
             round_time = time.time() - round_start
             
             # Metrici per rundă
@@ -557,10 +704,11 @@ class EnhancedFederatedServer:
             self.round_metrics_history.append(round_metrics)
             self.round_times.append(round_time)
             
-            logger.info(f"Round {round_nr}: Accuracy = {global_accuracy:.4f}, Precision = {eval_metrics['precision']:.4f}, Recall = {eval_metrics['recall']:.4f}, F1 = {eval_metrics['f1']:.4f}, Time = {round_time:.2f}s")
+            debug(f"  Round {round_nr} complete: Acc={global_accuracy:.4f}, Time={round_time:.2f}s")
             
             # Distribuie weights actualizate
             if round_nr < self.rounds - 1:
+                debug(f"  Distributing updated weights for next round...")
                 for i in range(self.num_clients):
                     self.client_queues[i].put({
                         'type': 'updated_weights',
@@ -573,15 +721,23 @@ class EnhancedFederatedServer:
                     try:
                         self.server_queue.get(timeout=60)
                     except queue.Empty:
-                        logger.warning(f"Timeout waiting for weight confirmation from client {i}")
+                        debug(f"  WARNING: Timeout waiting for weight confirmation from client {i}")
         
         # Notifică sfârșit simulare
         for i in range(self.num_clients):
             self.client_queues[i].put({'type': 'simulation_end'})
         
         # Salvează rezultate
+        debug(f"=== SIMULATION FINISHED ===")
+        debug(f"Total rounds completed: {len(self.round_metrics_history)}")
+        if self.round_metrics_history:
+            debug(f"Final accuracy: {self.round_metrics_history[-1]['accuracy']:.4f}")
+        else:
+            debug(f"ERROR: NO ROUNDS COMPLETED!")
+        
         self._save_results()
-        logger.info("FL simulation completed!")
+        debug(f"Results saved to {self.test_json_path}")
+        debug(f"=== SERVER.RUN() ENDED ===")
     
     def _save_results(self):
         """Salvează rezultatele finale"""
@@ -742,6 +898,17 @@ class EnhancedFederatedClient:
             logger.info(f"Client {self.client_id}: Model loaded ({FRAMEWORK.upper()}, classes: {self.current_num_classes})")
         except Exception as e:
             logger.error(f"Client {self.client_id}: Error loading model: {e}")
+            # Write to debug file
+            try:
+                import traceback
+                debug_log = os.path.join(os.path.dirname(self.server.test_json_path),
+                                          f"debug_client_{self.client_id}.log")
+                with open(debug_log, 'w') as f:
+                    f.write(f"Client {self.client_id} FAILED to load model\n")
+                    f.write(f"Error: {e}\n")
+                    f.write(traceback.format_exc())
+            except:
+                pass
             return
         
         # Rundele de antrenare
@@ -811,7 +978,7 @@ def main():
     parser.add_argument('--data_poisoning', action='store_true',
                        help='Enable data poisoning attack detection and logging')
     parser.add_argument('--data_poison_protection', type=str, default='fedavg',
-                       choices=['fedavg', 'krum', 'trimmed_mean', 'median', 'trimmed_mean_krum', 'random'],
+                       choices=['fedavg', 'krum', 'trimmed_mean', 'median', 'foolsgold', 'trimmed_mean_krum', 'random'],
                        help='Aggregation method for data poison protection')
     parser.add_argument('--template', type=str, default=None,
                        help='Path to template_code.py for importing custom functions')
@@ -907,6 +1074,16 @@ def main():
         logger.error(f"Server error: {e}")
         import traceback
         traceback.print_exc()
+        # Write error to debug log
+        debug_log = os.path.join(os.path.dirname(args.test_file), 
+                                  f"debug_{args.data_poison_protection}.log")
+        with open(debug_log, 'a') as f:
+            f.write(f"\n=== EXCEPTION IN MAIN ===\n{traceback.format_exc()}\n")
+    finally:
+        # Always save results even if run() crashed
+        if not server.round_metrics_history:
+            logger.error(f"No rounds completed for protection={args.data_poison_protection}")
+        server._save_results()
     
     # Wait for clients
     logger.info("Waiting for clients to finish...")

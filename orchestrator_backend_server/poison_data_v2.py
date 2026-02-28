@@ -580,7 +580,7 @@ def apply_poisoning(
     poisoned_per_class = {}
     
     # Procesează fiecare subset
-    for subset in ['train', 'test']:
+    for subset in ['train']:
         subset_dir = os.path.join(output_dir, subset)
         
         if not os.path.exists(subset_dir):

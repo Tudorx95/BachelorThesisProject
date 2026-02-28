@@ -2,8 +2,14 @@
 Template pentru antrenarea rețelelor neuronale în medii Federated Learning
 Compatibil cu PyTorch
 
-Model: ResNet18 PRE-ANTRENAT descărcat de pe HuggingFace Hub
+Model: ResNet18 PRE-ANTRENAT pe CIFAR-10, descărcat de pe HuggingFace Hub
+       (edadaltocg/resnet18_cifar10 — antrenat cu timm/PyTorch, acuratețe ~95%)
+       Descărcat cu hf_hub_download ca fișier pytorch_model.bin (PyTorch pur state_dict)
+       NU necesită timm la runtime — doar torchvision + huggingface_hub
 Dataset: CIFAR-10 (60,000 imagini 32x32 RGB, 10 clase)
+
+SCOP: Testul 3 — model ResNet18 bine antrenat de pe HuggingFace (95% acc),
+      variind % noduri compromise
 """
 import torch
 import torch.nn as nn
@@ -27,8 +33,8 @@ CIFAR10_CLASSES = [
 ]
 NUM_CLASSES = 10
 IMG_SIZE = (32, 32)
-HUGGINGFACE_REPO_ID = "Tudorx95/resnet18-cifar10-pytorch"
-MODEL_FILENAME = "ResNet18_CIFAR10.pth"
+HUGGINGFACE_REPO_ID = "edadaltocg/resnet18_cifar10"
+MODEL_FILENAME = "pytorch_model.bin"
 
 # Device configuration
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -72,13 +78,21 @@ def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
     """
     Încarcă CIFAR-10 dataset folosind torchvision.
     
+    Modelul edadaltocg/resnet18_cifar10 a fost antrenat cu normalizare CIFAR-10:
+      mean = [0.4914, 0.4822, 0.4465]
+      std  = [0.2471, 0.2435, 0.2616]
+    (valori standard CIFAR-10, ușor diferite de cele din template-ul original)
+    
     Returns:
         Tuple[DataLoader, DataLoader]: (train_loader, test_loader)
     """
-    # Transform cu normalizare CIFAR-10 (aceleași valori ca în antrenare)
+    # Transform cu normalizare identică cu antrenarea modelului
     basic_transform = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.Normalize(
+            (0.4914, 0.4822, 0.4465),
+            (0.2471, 0.2435, 0.2616)
+        ),
     ])
     
     train_dataset = torchvision.datasets.CIFAR10(
@@ -100,7 +114,7 @@ def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
         train_dataset,
         batch_size=32,
         shuffle=True,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -108,7 +122,7 @@ def load_train_test_data() -> Tuple[DataLoader, DataLoader]:
         test_dataset,
         batch_size=32,
         shuffle=False,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -173,10 +187,13 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, 
     if not train_dir.exists() or not test_dir.exists():
         raise FileNotFoundError(f"Data directories not found: {data_path}")
     
-    # Transform pentru preprocesare (cu normalizare CIFAR-10 identică cu antrenarea)
+    # Transform pentru preprocesare (cu normalizare identică cu antrenarea)
     transform = transforms.Compose([
-        transforms.ToTensor(),  # Convertește la tensor și normalizează la [0, 1]
-        transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
+        transforms.ToTensor(),
+        transforms.Normalize(
+            (0.4914, 0.4822, 0.4465),
+            (0.2471, 0.2435, 0.2616)
+        ),
     ])
     
     # Creează dataset-uri custom
@@ -188,7 +205,7 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, 
         train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -196,7 +213,7 @@ def load_client_data(data_path: str, batch_size: int = 32) -> Tuple[DataLoader, 
         test_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=2,
+        num_workers=0,
         pin_memory=True
     )
     
@@ -265,6 +282,14 @@ def download_data(output_dir: str):
 def _create_resnet18_cifar10() -> nn.Module:
     """
     Creează arhitectura ResNet18 adaptată pentru CIFAR-10 (32x32).
+    
+    Arhitectura este IDENTICĂ cu cea folosită de edadaltocg/resnet18_cifar10:
+    - conv1: Conv2d(3, 64, kernel_size=3, stride=1, padding=1) — nu 7x7 ca ImageNet
+    - maxpool: Identity() — eliminat pentru imagini mici
+    - fc: Linear(512, 10) — 10 clase CIFAR-10
+    
+    Sursa: https://huggingface.co/edadaltocg/resnet18_cifar10/discussions/1
+    
     NU încarcă ponderi pre-antrenate — doar arhitectura.
     
     Returns:
@@ -277,8 +302,7 @@ def _create_resnet18_cifar10() -> nn.Module:
     model.maxpool = nn.Identity()  # Elimină maxpool pentru imagini mici
     
     # Modifică ultimul layer pentru NUM_CLASSES
-    num_ftrs = model.fc.in_features
-    model.fc = nn.Linear(num_ftrs, NUM_CLASSES)
+    model.fc = nn.Linear(512, NUM_CLASSES)
     
     return model
 
@@ -287,12 +311,13 @@ def create_model() -> nn.Module:
     """
     Descarcă model pre-antrenat de pe HuggingFace Hub.
     
-    Checkpoint-ul conține toată configurația:
-    - model_state_dict: ponderile rețelei
-    - architecture: info despre arhitectură
-    - normalization: parametri de normalizare
-    - classes: lista de clase
-    - metrics: metricile de antrenare
+    Modelul: edadaltocg/resnet18_cifar10
+    - ResNet18 antrenat pe CIFAR-10 cu timm/PyTorch
+    - Acuratețe test: ~95%
+    - Licență: MIT
+    - Antrenat 300 epoci, SGD lr=0.1, CrossEntropyLoss
+    - Descărcat ca pytorch_model.bin (state_dict pur) via hf_hub_download
+    - NU necesită timm la runtime — doar torchvision
     
     Returns:
         nn.Module: Model compilat cu ponderi pre-antrenate
@@ -300,43 +325,27 @@ def create_model() -> nn.Module:
     try:
         from huggingface_hub import hf_hub_download
         
+        print(f"Downloading pretrained model from HuggingFace: {HUGGINGFACE_REPO_ID}...")
+        
+        # Descarcă fișierul pytorch_model.bin de pe HuggingFace
         model_path = hf_hub_download(
             repo_id=HUGGINGFACE_REPO_ID,
             filename=MODEL_FILENAME,
             cache_dir=".cache/huggingface"
         )
         
-        checkpoint = torch.load(model_path, map_location=DEVICE)
+        # Reconstruiește arhitectura identică cu cea de antrenare
+        model = _create_resnet18_cifar10()
+        model.to(DEVICE)
         
-        # Reconstruiește arhitectura din checkpoint
-        if isinstance(checkpoint, dict) and 'architecture' in checkpoint:
-            arch = checkpoint['architecture']
-            model = torchvision.models.resnet18(weights=None)
-            mod = arch['modifications']
-            model.conv1 = nn.Conv2d(3, 64, **mod['conv1'])
-            model.maxpool = nn.Identity()
-            model.fc = nn.Linear(mod['fc']['in_features'], mod['fc']['out_features'])
-            model.to(DEVICE)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
-        elif isinstance(checkpoint, dict) and 'model_state_dict' in checkpoint:
-            # Format checkpoint dict fără architecture (compatibilitate)
-            model = _create_resnet18_cifar10()
-            model.to(DEVICE)
-            model.load_state_dict(checkpoint['model_state_dict'])
-            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
-        elif isinstance(checkpoint, nn.Module):
-            # Format torch.save(model, path) (compatibilitate veche)
-            model = _create_resnet18_cifar10()
-            model.to(DEVICE)
-            model.load_state_dict(checkpoint.state_dict())
-            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
-        else:
-            # Format state_dict direct
-            model = _create_resnet18_cifar10()
-            model.to(DEVICE)
-            model.load_state_dict(checkpoint)
-            print(f"Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        # Încarcă ponderile din state_dict
+        state_dict = torch.load(model_path, map_location=DEVICE)
+        model.load_state_dict(state_dict)
+        
+        total_params = sum(p.numel() for p in model.parameters())
+        print(f"✓ Model loaded from HuggingFace: {HUGGINGFACE_REPO_ID}")
+        print(f"  Total parameters: {total_params:,}")
+        print(f"  Expected test accuracy: ~95%")
         
         _model_compile(model)
         return model
@@ -355,7 +364,10 @@ def _model_compile(model: nn.Module):
     """
     # Atașăm loss function și optimizer ca atribute
     model.criterion = nn.CrossEntropyLoss()
-    model.optimizer = optim.Adam(model.parameters(), lr=0.001)
+    # LR mic (1e-4) — modelul e deja antrenat la 95% acuratețe.
+    # Un LR prea mare (ex: 1e-3) distruge ponderile în FL
+    # (catastrophic forgetting amplificat de federated averaging).
+    model.optimizer = optim.Adam(model.parameters(), lr=0.0001)
     
     # Flag pentru a ști că modelul e "compilat"
     model.is_compiled = True
@@ -548,7 +560,7 @@ def calculate_metrics(
 # ============================================================================
 def get_model_weights(model: nn.Module) -> List[np.ndarray]:
     """
-    Extrage ponderile modelului.
+    Extrage ponderile și bufferele modelului (inclusiv BatchNorm running_mean/var).
     
     Args:
         model: Modelul din care se extrag ponderile
@@ -557,23 +569,29 @@ def get_model_weights(model: nn.Module) -> List[np.ndarray]:
         List cu toate ponderile (numpy arrays)
     """
     weights = []
-    for param in model.parameters():
-        weights.append(param.data.cpu().numpy())
+    for tensor in model.state_dict().values():
+        weights.append(tensor.cpu().numpy())
     
     return weights
 
 
 def set_model_weights(model: nn.Module, weights: List[np.ndarray]):
     """
-    Setează ponderile modelului.
+    Setează ponderile și bufferele modelului.
     
     Args:
         model: Modelul în care se setează ponderile
         weights: Lista cu ponderi (numpy arrays)
     """
+    state_dict = model.state_dict()
     with torch.no_grad():
-        for param, weight in zip(model.parameters(), weights):
-            param.data = torch.from_numpy(weight).to(param.device)
+        for (name, tensor), weight in zip(state_dict.items(), weights):
+            # np.mean/np.sort pot produce scalare numpy (ex: num_batches_tracked)
+            # torch.from_numpy acceptă doar np.ndarray, nu numpy scalare
+            if not isinstance(weight, np.ndarray):
+                weight = np.array(weight)
+            new_tensor = torch.from_numpy(weight).to(device=tensor.device, dtype=tensor.dtype)
+            tensor.copy_(new_tensor)
 
 
 # ============================================================================
@@ -601,6 +619,7 @@ def save_model_config(
         'model_state_dict': model.state_dict(),
         'architecture': {
             'base': 'resnet18',
+            'source': 'edadaltocg/resnet18_cifar10',
             'num_classes': NUM_CLASSES,
             'img_size': list(IMG_SIZE),
             'modifications': {
@@ -611,7 +630,7 @@ def save_model_config(
         },
         'normalization': {
             'mean': [0.4914, 0.4822, 0.4465],
-            'std': [0.2023, 0.1994, 0.2010]
+            'std': [0.2471, 0.2435, 0.2616]
         },
         'classes': CIFAR10_CLASSES,
         'optimizer_state_dict': model.optimizer.state_dict() if hasattr(model, 'optimizer') else None,
@@ -732,4 +751,4 @@ if __name__ == "__main__":
     final_metrics = calculate_metrics(model, test_ds)
     
     # STEP 8: Salvare model
-    save_model_config(model, "ResNet18_CIFAR10.pth")
+    save_model_config(model, "ResNet18_CIFAR10_edadaltocg.pth")

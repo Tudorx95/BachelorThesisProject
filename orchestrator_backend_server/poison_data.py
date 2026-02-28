@@ -125,7 +125,7 @@ def apply_poisoning(test_file,nn_name, input_dir, output_dir, operation='noise',
         subset_dir = os.path.join(output_dir, subset)
         for class_name in class_names:
             class_dir = os.path.join(subset_dir, class_name)
-            images = [f for f in os.listdir(class_dir) if f.endswith('.jpg')]
+            images = [f for f in os.listdir(class_dir) if f.endswith('.jpg') or f.endswith('.png')]
             
             # Selectează un procent de imagini pentru poisoning
             num_poison = int(len(images) * percentage)

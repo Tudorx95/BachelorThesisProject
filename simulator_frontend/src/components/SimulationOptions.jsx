@@ -394,6 +394,7 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                                 <option value="krum">Krum - Selects closest update (99% attack elimination)</option>
                                 <option value="trimmed_mean">Trimmed Mean - Removes extremes (resistant to label-flipping)</option>
                                 <option value="median">Median - Resistant to 20% malicious clients</option>
+                                <option value="foolsgold">FoolsGold - Sybil/Label Flip defense</option>
                                 <option value="trimmed_mean_krum">Trimmed Mean + Krum - Hybrid approach</option>
                                 <option value="random">Random - Randomizes between Krum and Trimmed Mean</option>
                             </select>

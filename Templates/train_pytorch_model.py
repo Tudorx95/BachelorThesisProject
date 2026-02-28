@@ -16,7 +16,7 @@ PRIVATE_REPO = False
 # ============================================================
 
 # Instalare
-!pip install -q huggingface_hub
+# !pip install -q huggingface_hub
 
 import torch
 import torch.nn as nn

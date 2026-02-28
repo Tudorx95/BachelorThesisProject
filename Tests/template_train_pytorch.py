@@ -560,7 +560,7 @@ def calculate_metrics(
 # ============================================================================
 def get_model_weights(model: nn.Module) -> List[np.ndarray]:
     """
-    Extrage ponderile modelului.
+    Extrage ponderile și bufferele modelului (inclusiv BatchNorm running_mean/var).
     
     Args:
         model: Modelul din care se extrag ponderile
@@ -569,23 +569,29 @@ def get_model_weights(model: nn.Module) -> List[np.ndarray]:
         List cu toate ponderile (numpy arrays)
     """
     weights = []
-    for param in model.parameters():
-        weights.append(param.data.cpu().numpy())
+    for tensor in model.state_dict().values():
+        weights.append(tensor.cpu().numpy())
     
     return weights
 
 
 def set_model_weights(model: nn.Module, weights: List[np.ndarray]):
     """
-    Setează ponderile modelului.
+    Setează ponderile și bufferele modelului.
     
     Args:
         model: Modelul în care se setează ponderile
         weights: Lista cu ponderi (numpy arrays)
     """
+    state_dict = model.state_dict()
     with torch.no_grad():
-        for param, weight in zip(model.parameters(), weights):
-            param.data = torch.from_numpy(weight).to(param.device)
+        for (name, tensor), weight in zip(state_dict.items(), weights):
+            # np.mean/np.sort pot produce scalare numpy (ex: num_batches_tracked)
+            # torch.from_numpy acceptă doar np.ndarray, nu numpy scalare
+            if not isinstance(weight, np.ndarray):
+                weight = np.array(weight)
+            new_tensor = torch.from_numpy(weight).to(device=tensor.device, dtype=tensor.dtype)
+            tensor.copy_(new_tensor)
 
 
 # ============================================================================
