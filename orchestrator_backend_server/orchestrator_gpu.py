@@ -306,10 +306,13 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
             app.logger.error(error_msg)
             return
         
-        # ========== STEP 7b: Partition data for FL clients (IID) ==========
-        # Împarte datele descărcate în N partiții egale, câte una per client.
-        # Fiecare client primește ~(total/N) imagini per clasă (IID split).
-        # Setul de test rămâne comun tuturor clienților (copiat integral).
+        # ========== STEP 7b: Partition data for FL clients (Non-IID) ==========
+        # Împarte datele descărcate în N partiții NON-IID, câte una per client.
+        # Non-IID conform FoolsGold paper: fiecare client primește o clasă dominantă
+        # (80% dintr-o clasă + 20% uniform din celelalte clase).
+        # Asta face ca update-urile clienților onești să fie DIVERSE (date diferite),
+        # iar sybil-urile (clienți malițioși) să aibă update-uri SIMILARE (aceleași date poisoned).
+        # FoolsGold detectează exact acest pattern de similaritate.
         partition_script = f"""
 import os, shutil, random
 from pathlib import Path
@@ -326,6 +329,14 @@ class_dirs = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
 num_classes = len(class_dirs)
 print(f'Detected {{num_classes}} classes: {{class_dirs}}')
 
+# Colectează toate imaginile per clasă
+class_images = {{}}
+for class_name in class_dirs:
+    class_dir = train_dir / class_name
+    imgs = sorted([f.name for f in class_dir.glob('*') if f.is_file()])
+    random.shuffle(imgs)
+    class_images[class_name] = imgs
+
 # Creează directoare per client
 for i in range(N):
     client_dir = data_dir / f'client_{{i}}'
@@ -334,30 +345,64 @@ for i in range(N):
     
     if client_test.exists():
         shutil.rmtree(client_test)
+    if client_dir.exists():
+        shutil.rmtree(client_dir)
     shutil.copytree(str(test_dir), str(client_test))
     
     for class_name in class_dirs:
         (client_train / class_name).mkdir(parents=True, exist_ok=True)
 
-# Partitioneaza train data: IID split
-for class_name in class_dirs:
-    class_dir = train_dir / class_name
-    images = sorted([f.name for f in class_dir.glob('*') if f.is_file()])
-    random.shuffle(images)
-    
-    chunk_size = len(images) // N
-    for i in range(N):
-        start = i * chunk_size
-        end = start + chunk_size if i < N - 1 else len(images)
-        client_class_dir = data_dir / f'client_{{i}}' / 'train' / class_name
-        for img_name in images[start:end]:
-            shutil.copy2(str(class_dir / img_name), str(client_class_dir / img_name))
+# Non-IID partitioning:
+# Fiecare client i primește clasa dominantă i % num_classes
+# 80% din imaginile clasei dominante + 20% uniform din celelalte clase
+dominant_ratio = 0.8  # 80% dominant class
+other_ratio = 0.2     # 20% from other classes
 
-print(f'Partitioned data into {{N}} clients (IID)')
+# Calculează câte imagini per client
+total_per_class = {{c: len(imgs) for c, imgs in class_images.items()}}
+imgs_per_client = sum(total_per_class.values()) // N  # ~5000 per client
+
+# Track-uim ce imagini au fost deja alocate
+class_pointers = {{c: 0 for c in class_dirs}}
+
+for i in range(N):
+    dominant_class = class_dirs[i % num_classes]
+    dominant_count = int(imgs_per_client * dominant_ratio)
+    other_count_total = imgs_per_client - dominant_count
+    other_count_per_class = other_count_total // (num_classes - 1)
+    
+    client_train = data_dir / f'client_{{i}}' / 'train'
+    
+    # Adaugă imagini din clasa dominantă
+    ptr = class_pointers[dominant_class]
+    for img_name in class_images[dominant_class][ptr:ptr + dominant_count]:
+        src = train_dir / dominant_class / img_name
+        dst = client_train / dominant_class / img_name
+        shutil.copy2(str(src), str(dst))
+    class_pointers[dominant_class] = ptr + dominant_count
+    
+    # Adaugă imagini din celelalte clase (uniform)
+    for class_name in class_dirs:
+        if class_name == dominant_class:
+            continue
+        ptr = class_pointers[class_name]
+        for img_name in class_images[class_name][ptr:ptr + other_count_per_class]:
+            src = train_dir / class_name / img_name
+            dst = client_train / class_name / img_name
+            shutil.copy2(str(src), str(dst))
+        class_pointers[class_name] = ptr + other_count_per_class
+
+print(f'Partitioned data into {{N}} clients (Non-IID, dominant_ratio={{dominant_ratio}})')
 for i in range(N):
     client_train = data_dir / f'client_{{i}}' / 'train'
-    total = sum(len(list((client_train / c).glob('*'))) for c in class_dirs if (client_train / c).exists())
-    print(f'  Client {{i}}: {{total}} train images')
+    dominant_class = class_dirs[i % num_classes]
+    per_class = {{}}
+    for c in class_dirs:
+        p = client_train / c
+        per_class[c] = len(list(p.glob('*'))) if p.exists() else 0
+    total = sum(per_class.values())
+    dom_pct = per_class[dominant_class] / total * 100 if total > 0 else 0
+    print(f'  Client {{i}}: {{total}} imgs, dominant={{dominant_class}} ({{dom_pct:.0f}}%)')
 """
 
         cmd = f"{conda_activate} && cd {user_dir} && python -c \"{partition_script}\""
