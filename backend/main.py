@@ -1080,8 +1080,8 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
             
     except WebSocketDisconnect:
         logger.info(f"Client disconnected from task {task_id}")
-        if task_id in active_tasks:
-            del active_tasks[task_id]
+        # Do NOT delete from active_tasks — the background poller still needs
+        # this entry, and the client may reconnect after a page refresh.
     except Exception as e:
         logger.error(f"WebSocket error for task {task_id}: {str(e)}")
         await websocket.send_json({
@@ -1092,31 +1092,108 @@ async def websocket_endpoint(websocket: WebSocket, task_id: str):
 
 @app.get("/task-status/{task_id}")
 async def get_task_status(task_id: str):
-    """Get the current status of a task"""
+    """Get the current status of a task.
+    
+    Falls back to querying the orchestrator and then the DB if the task
+    is not found in the in-memory active_tasks dict (e.g. after a
+    backend restart or if the WebSocket disconnected).
+    """
     logger.info(f"Checking status for task {task_id}")
 
-    # Check if task exists in our active tasks
-    if task_id not in active_tasks:
-        logger.warning(f"Task {task_id} not found in active tasks")
-        raise HTTPException(status_code=404, detail="Task not found")
+    # ── 1. Check in-memory active_tasks (fast path) ──
+    if task_id in active_tasks:
+        task_info = active_tasks[task_id]
+        status_info = task_info.get("status", {})
 
-    task_info = active_tasks[task_id]
-    status_info = task_info.get("status", {})
+        response = {
+            "task_id": task_id,
+            "status": status_info.get("status", "running") if isinstance(status_info, dict) else "running",
+            "current_step": status_info.get("step") if isinstance(status_info, dict) else None,
+            "message": status_info.get("message") if isinstance(status_info, dict) else None,
+            "orchestrator_status": status_info if isinstance(status_info, dict) else None,
+        }
 
-    response = {
-        "task_id": task_id,
-        "status": status_info.get("status", "running") if isinstance(status_info, dict) else "running",
-        "current_step": status_info.get("step") if isinstance(status_info, dict) else None,
-        "message": status_info.get("message") if isinstance(status_info, dict) else None,
-        "orchestrator_status": status_info if isinstance(status_info, dict) else None,
-    }
+        # Include results if completed
+        if isinstance(status_info, dict) and status_info.get("status") == "completed" and "results_data" in task_info:
+            response["results"] = task_info["results_data"]
 
-    # Include results if completed
-    if status_info.get("status") == "completed" and "results_data" in task_info:
-        response["results"] = task_info["results_data"]
+        logger.info(f"Task {task_id} status (from memory): {response}")
+        return response
 
-    logger.info(f"Task {task_id} status: {response}")
-    return response
+    # ── 2. Fallback: query the orchestrator directly ──
+    logger.info(f"Task {task_id} not in active_tasks, querying orchestrator...")
+    token = login_to_orchestrator()
+    if token:
+        try:
+            headers = {"Authorization": f"Bearer {token}"}
+            orch_response = requests.get(
+                f"{ORCHESTRATOR_URL}/status/{task_id}",
+                headers=headers,
+                timeout=10
+            )
+            if orch_response.ok:
+                orch_data = orch_response.json()
+                orch_status = orch_data.get("status", "unknown")
+
+                response = {
+                    "task_id": task_id,
+                    "status": orch_status,
+                    "current_step": orch_data.get("step"),
+                    "message": orch_data.get("message"),
+                    "orchestrator_status": orch_data,
+                }
+
+                # If completed, also fetch results from orchestrator
+                if orch_status == "completed":
+                    try:
+                        results_resp = requests.get(
+                            f"{ORCHESTRATOR_URL}/results/{task_id}",
+                            headers=headers,
+                            timeout=10
+                        )
+                        if results_resp.ok:
+                            response["results"] = results_resp.json()
+                    except Exception as e:
+                        logger.error(f"Error fetching results from orchestrator for task {task_id}: {e}")
+
+                # If still running, re-register so poller & future WS can pick it up
+                if orch_status == "running":
+                    active_tasks[task_id] = {
+                        "status": orch_data,
+                    }
+                    # Restart background polling for this task
+                    asyncio.ensure_future(poll_orchestrator_status(task_id))
+                    logger.info(f"Re-registered task {task_id} and restarted poller")
+
+                logger.info(f"Task {task_id} status (from orchestrator): {response}")
+                return response
+        except Exception as e:
+            logger.error(f"Error querying orchestrator for task {task_id}: {e}")
+
+    # ── 3. Final fallback: check the database ──
+    db = SessionLocal()
+    try:
+        sim = db.query(SimulationResult).filter(
+            SimulationResult.task_id == task_id
+        ).first()
+        if sim:
+            logger.info(f"Task {task_id} found in DB with status={sim.status}")
+            return {
+                "task_id": task_id,
+                "status": sim.status,
+                "current_step": 11 if sim.status == "completed" else None,
+                "message": None,
+                "orchestrator_status": None,
+                "results": sim.results
+            }
+    except Exception as e:
+        logger.error(f"Error checking DB for task {task_id}: {e}")
+    finally:
+        db.close()
+
+    # Truly not found anywhere
+    logger.warning(f"Task {task_id} not found in memory, orchestrator, or DB")
+    raise HTTPException(status_code=404, detail="Task not found")
 
 
 @app.get("/health")
