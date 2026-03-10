@@ -12,6 +12,9 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Install semgrep (opengrep) for static analysis of user template scripts
+RUN pip install --no-cache-dir semgrep
+
 # Copy application code
 COPY . .
 

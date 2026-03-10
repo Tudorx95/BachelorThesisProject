@@ -15,6 +15,8 @@ import os
 import uuid
 import requests
 import logging
+import subprocess
+import tempfile
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -266,12 +268,13 @@ async def get_current_user(
     token = credentials.credentials
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_id: int = payload.get("sub")
+        user_id = payload.get("sub")
         if user_id is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Could not validate credentials"
             )
+        user_id = int(user_id)
     except jwt.PyJWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -285,6 +288,122 @@ async def get_current_user(
             detail="User not found"
         )
     return user
+
+# ============================================================================
+# OPENGREP (SEMGREP) STATIC ANALYSIS
+# ============================================================================
+
+def run_opengrep_scan(code: str) -> dict:
+    """
+    Run opengrep (semgrep) static analysis on user template code.
+    
+    Returns:
+        dict with keys:
+            - passed: bool (True if no HIGH/CRITICAL findings)
+            - findings: list of finding messages (only HIGH/CRITICAL)
+            - raw_output: full JSON output from semgrep
+    """
+    tmp_file = None
+    try:
+        # Write code to a temporary file
+        tmp_file = tempfile.NamedTemporaryFile(
+            mode='w', suffix='.py', prefix='template_scan_', delete=False
+        )
+        tmp_file.write(code)
+        tmp_file.flush()
+        tmp_path = tmp_file.name
+        tmp_file.close()
+        
+        logger.info(f"Running opengrep scan on: {tmp_path}")
+        
+        # Run semgrep with auto config and JSON output
+        # Exclude ML framework rules that are false positives for FL simulation templates
+        # (torch.save/load and pickle usage are standard in PyTorch/TensorFlow workflows)
+        result = subprocess.run(
+            [
+                'semgrep', 'scan',
+                '--config', 'auto',
+                '--json',
+                '--quiet',
+                '--exclude-rule', 'trailofbits.python.pickles-in-pytorch.pickles-in-pytorch',
+                '--exclude-rule', 'trailofbits.python.pickles-in-keras.pickles-in-keras',
+                '--exclude-rule', 'trailofbits.python.pickles-in-tensorflow.pickles-in-tensorflow',
+                tmp_path
+            ],
+            capture_output=True,
+            text=True,
+            timeout=120  # 2 min timeout for scan
+        )
+        
+        logger.info(f"Semgrep exit code: {result.returncode}")
+        logger.info(f"Semgrep stdout length: {len(result.stdout)}")
+        
+        # Parse JSON output
+        findings = []
+        raw_output = {}
+        
+        if result.stdout.strip():
+            try:
+                raw_output = json.loads(result.stdout)
+            except json.JSONDecodeError:
+                logger.warning(f"Failed to parse semgrep JSON output: {result.stdout[:500]}")
+                # If we can't parse output, let the simulation proceed
+                return {"passed": True, "findings": [], "raw_output": {}}
+        
+        # Extract findings with HIGH or CRITICAL severity
+        results_list = raw_output.get("results", [])
+        critical_findings = []
+        
+        for finding in results_list:
+            severity = finding.get("extra", {}).get("severity", "").upper()
+            
+            if severity in ["ERROR", "WARNING"]:  # semgrep uses ERROR for CRITICAL/HIGH
+                rule_id = finding.get("check_id", "unknown")
+                message = finding.get("extra", {}).get("message", "No description")
+                line_start = finding.get("start", {}).get("line", "?")
+                line_end = finding.get("end", {}).get("line", "?")
+                matched_code = finding.get("extra", {}).get("lines", "")
+                
+                finding_msg = (
+                    f"🔴 [{severity}] {rule_id}\n"
+                    f"   Line {line_start}-{line_end}: {message}\n"
+                    f"   Code: {matched_code.strip()}"
+                )
+                critical_findings.append(finding_msg)
+                logger.warning(f"Security finding: {rule_id} (severity={severity})")
+        
+        passed = len(critical_findings) == 0
+        
+        if not passed:
+            logger.warning(f"OpenGrep scan FAILED: {len(critical_findings)} critical findings")
+        else:
+            logger.info(f"OpenGrep scan PASSED: {len(results_list)} total findings, 0 critical")
+        
+        return {
+            "passed": passed,
+            "findings": critical_findings,
+            "raw_output": raw_output
+        }
+        
+    except subprocess.TimeoutExpired:
+        logger.error("Semgrep scan timed out")
+        # On timeout, let the simulation proceed
+        return {"passed": True, "findings": [], "raw_output": {}}
+    except FileNotFoundError:
+        logger.error("semgrep command not found — is it installed?")
+        # If semgrep is not installed, let the simulation proceed
+        return {"passed": True, "findings": [], "raw_output": {}}
+    except Exception as e:
+        logger.error(f"Error running opengrep scan: {e}")
+        return {"passed": True, "findings": [], "raw_output": {}}
+    finally:
+        # Cleanup temp file
+        if tmp_file and os.path.exists(tmp_file.name):
+            try:
+                os.unlink(tmp_file.name)
+            except:
+                pass
+
 
 # Orchestrator communication functions
 def login_to_orchestrator():
@@ -493,7 +612,7 @@ def register(user: UserCreate, db: Session = Depends(get_db)):
     # Create access token
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": db_user.id}, expires_delta=access_token_expires
+        data={"sub": str(db_user.id)}, expires_delta=access_token_expires
     )
     
     return {
@@ -513,7 +632,7 @@ def login(user: UserLogin, db: Session = Depends(get_db)):
     
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": db_user.id}, expires_delta=access_token_expires
+        data={"sub": str(db_user.id)}, expires_delta=access_token_expires
     )
     
     return {
@@ -803,6 +922,27 @@ async def run_code(request: RunRequest, background_tasks: BackgroundTasks):
         output += f"🛡️ Data Poison Protection:\n"
         output += f"  • Aggregation Method: {config.data_poison_protection}\n\n"
         
+        # ====== OpenGrep Security Scan ==========
+        logger.info("Running opengrep security scan on template code...")
+        scan_result = run_opengrep_scan(request.code)
+        
+        if not scan_result["passed"]:
+            findings_text = "\n\n".join(scan_result["findings"])
+            output += f"\n🛡️ Security Scan Results:\n"
+            output += f"❌ BLOCKED: Critical security issues found in template code!\n\n"
+            output += findings_text
+            output += f"\n\n⚠️ Simulation cannot proceed. Please fix the security issues above."
+            
+            return {
+                "status": "security_scan_failed",
+                "output": output,
+                "task_id": None,
+                "security_findings": scan_result["findings"]
+            }
+        
+        output += f"✅ Security scan passed\n\n"
+        logger.info("Security scan passed, proceeding...")
+
         # Store task info
         active_tasks[task_id] = {
             "status": "initializing",

@@ -1,6 +1,6 @@
 // OutputCell.jsx (enhanced with real-time progress messages)
 import React from 'react';
-import { Loader2, AlertCircle, CheckCircle, XCircle, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle, CheckCircle, XCircle, TrendingUp, ShieldAlert } from 'lucide-react';
 import ProgressStep from './ProgressStep';
 import ExportPDFButton from './ExportPDFButton';
 
@@ -8,14 +8,16 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
     // Define all simulation steps with their metadata
     const steps = [
         { id: 1, name: 'Preparing Environment', key: 'initialization' },
-        { id: 2, name: 'Code Execution', key: 'code_execution' },
+        { id: 2, name: 'Code Verification', key: 'code_verification' },
         { id: 3, name: 'Data Generation', key: 'data_generation' },
         { id: 4, name: 'Data Poisoning', key: 'data_poisoning' },
-        { id: 5, name: 'FL Simulation (Clean)', key: 'fl_simulation_clean' },
-        { id: 6, name: 'FL Simulation (Clean Data Protection)', key: 'fl_simulation_clean_dp' },
-        { id: 7, name: 'FL Simulation (Poisoned)', key: 'fl_simulation_poisoned' },
-        { id: 8, name: 'FL Simulation (Data Poison Protection)', key: 'fl_simulation_poisoned_dp' },
-        { id: 9, name: 'Generating Results', key: 'generate_results' }
+        { id: 5, name: 'Allocate GPU', key: 'allocate_gpu' },
+        { id: 6, name: 'Code Execution', key: 'code_execution' },
+        { id: 7, name: 'FL Simulation (Clean)', key: 'fl_simulation_clean' },
+        { id: 8, name: 'FL Simulation (Clean Data Protection)', key: 'fl_simulation_clean_dp' },
+        { id: 9, name: 'FL Simulation (Poisoned)', key: 'fl_simulation_poisoned' },
+        { id: 10, name: 'FL Simulation (Data Poison Protection)', key: 'fl_simulation_poisoned_dp' },
+        { id: 11, name: 'Generating Results', key: 'generate_results' }
     ];
 
     // Debug logging to see what data we're receiving
@@ -247,6 +249,46 @@ export default function OutputCell({ output, isLoading, orchestratorStatus, onCa
                                 <p className="text-sm text-gray-700 dark:text-gray-300">{orchestratorStatus.message}</p>
                             </div>
                         )}
+                    </div>
+                ) : orchestratorStatus?.status === 'security_error' ? (
+                    // Security Scan Failure Display
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-700 rounded-lg">
+                            <ShieldAlert className="w-8 h-8 text-amber-600 dark:text-amber-400 flex-shrink-0" />
+                            <div>
+                                <h3 className="text-lg font-semibold text-amber-600 dark:text-amber-400">
+                                    Security Scan Failed
+                                </h3>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">
+                                    Critical security issues detected in your template code. Simulation blocked.
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Security Findings */}
+                        {orchestratorStatus.security_findings && orchestratorStatus.security_findings.length > 0 && (
+                            <div className="space-y-3">
+                                <p className="text-sm text-amber-600 dark:text-amber-400 font-semibold">
+                                    🛡️ OpenGrep Findings ({orchestratorStatus.security_findings.length}):
+                                </p>
+                                {orchestratorStatus.security_findings.map((finding, index) => (
+                                    <div
+                                        key={index}
+                                        className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700/50 rounded-lg"
+                                    >
+                                        <pre className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
+                                            {finding}
+                                        </pre>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700/50 rounded-lg">
+                            <p className="text-sm text-amber-700 dark:text-amber-300">
+                                ⚠️ Please fix the security issues in your template code and try again.
+                            </p>
+                        </div>
                     </div>
                 ) : orchestratorStatus?.status === 'error' ? (
                     // Error Status Display

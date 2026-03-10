@@ -284,7 +284,7 @@ function AppContent() {
                         orchestratorStatus: {
                             status: 'completed',
                             results_data: result.results,
-                            step: 7,
+                            step: 11,
                             message: 'Simulation completed (restored from database)'
                         }
                     });
@@ -327,7 +327,7 @@ function AppContent() {
                             currentTaskId: null,
                             orchestratorStatus: {
                                 status: actualStatus,
-                                step: 7,
+                                step: 11,
                                 message: actualStatus === 'completed'
                                     ? 'Simulation finished while offline'
                                     : 'Simulation was cancelled or lost',
@@ -945,6 +945,27 @@ function AppContent() {
                 setProjects(updatedProjects);
                 updateFileSimState(activeFileId, {
                     isRunning: false
+                });
+                return;
+            }
+
+            // Handle security scan failure from opengrep
+            if (data.status === 'security_scan_failed') {
+                const updatedProjects = projects.map(p => ({
+                    ...p,
+                    files: p.files.map(f =>
+                        f.id === activeFileId ? { ...f, output: data.output } : f
+                    )
+                }));
+                setProjects(updatedProjects);
+                updateFileSimState(activeFileId, {
+                    isRunning: false,
+                    orchestratorStatus: {
+                        status: 'security_error',
+                        message: data.output,
+                        security_findings: data.security_findings || [],
+                        step: 0
+                    }
                 });
                 return;
             }

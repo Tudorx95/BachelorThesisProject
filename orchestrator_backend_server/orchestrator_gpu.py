@@ -115,39 +115,23 @@ def kill_process_tree(pid):
 def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simulations):
     """
     Pipeline simulare cu alocare automată GPU
+    GPU-ul se alocă DUPĂ data poisoning (Step 5), pentru a minimiza 
+    timpul de ocupare a GPU-ului.
     """
     process_pid = os.getpid()
     gpu_id = -1  # Default CPU
     
     try:
-        # ========== STEP 0: Allocate GPU ==========
-        app.logger.info(f"[{task_id}] Allocating GPU...")
+        # ========== STEP 1: Preparing Environment ==========
+        app.logger.info(f"[{task_id}] Preparing environment...")
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 1, 
-            "message": "Allocating GPU...", 
+            "message": "Preparing directories...", 
             "pid": process_pid
         }
-        
-        # Allocate GPU (blocks until available)
-        gpu_id = gpu_manager.allocate_gpu(task_id, timeout=600)
-        
-        if gpu_id == -1:
-            app.logger.info(f"[{task_id}] Using CPU mode")
-            gpu_info = "CPU"
-        else:
-            app.logger.info(f"[{task_id}] Allocated GPU {gpu_id}")
-            gpu_info = f"GPU {gpu_id}"
-        
-        shared_simulations[task_id] = {
-            "status": "running", 
-            "step": 1, 
-            "message": f"Preparing directories (using {gpu_info})...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
-        }
 
-        # ========== STEP 1: Create directories ==========
+        # Create directories
         user_dir = BASE_DIR / f"user_{user_id}" / task_id
         user_dir.mkdir(parents=True, exist_ok=True)
         (user_dir / "clean_data").mkdir(exist_ok=True)
@@ -158,39 +142,30 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
             raise InterruptedError("Simulation cancelled by user")
         
-        # ========== STEP 2: Save template ==========
+        # Save template
         template_path = user_dir / "template_code.py"
         with open(template_path, 'w') as f:
             f.write(template_code)
         
-        # ========== STEP 3: Save config ==========
+        # Save config
         config_path = user_dir / "simulation_config.json"
         with open(config_path, 'w') as f:
             json.dump(config, f, indent=2)
         
-        # ========== STEP 4: Detect framework ==========
+        # Detect framework
         framework = detect_framework(template_code)
         conda_env = CONDA_TENSORFLOW_ENV if framework == "tensorflow" else CONDA_PYTORCH_ENV
         
         ext = 'keras' if framework == 'tensorflow' else 'pth'
         model_name = f"{config['NN_NAME']}.{ext}"
         model_path = user_dir / model_name
-        
-        shared_simulations[task_id] = {
-            "status": "running", 
-            "step": 2, 
-            "message": f"Executing template code on {gpu_info}...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
-        }
 
-        # ========== STEP 4.5: Verify template structure ==========
+        # ========== STEP 2: Verify template structure ==========
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 2, 
             "message": "Verifying template structure...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
+            "pid": process_pid
         }
         
         conda_activate = f"source {CONDA_BASE}/bin/activate {conda_env}"
@@ -209,110 +184,37 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
         
         if result_verify.returncode != 0:
             error_msg = f"Template verification failed: {result_verify.stderr}\nStdout: {result_verify.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 2}
             app.logger.error(error_msg)
             return
         
         app.logger.info(f"[{task_id}] ✓ Template verification passed")
         
-        # ========== STEP 5: Execute template code WITH GPU ==========
-        
-        
-        # Set CUDA_VISIBLE_DEVICES for this subprocess
-        env = os.environ.copy()
-        env['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
-        
-        # Allow TensorFlow GPU memory growth
-        if framework == "tensorflow":
-            env['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
-        
-        cmd = f"{conda_activate} && cd {user_dir} && python template_code.py"
-        result = subprocess.run(
-            cmd, 
-            shell=True, 
-            capture_output=True, 
-            text=True, 
-            executable="/bin/bash", 
-            timeout=600,
-            env=env  # Pass modified environment
-        )
-        
-        if result.returncode != 0:
-            error_msg = f"Template execution failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
-            app.logger.error(error_msg)
-            return
-        
-        # ========== STEP 6: Rename model file (.keras) ==========
-        app.logger.info(f"[{task_id}] Looking for model file to rename...")
-        
-        # Find the model file created by template_code.py
-        # It could be saved as {model.name}.keras (e.g., "sequential.keras", "resnet18.keras")
-        if framework == "tensorflow":
-            possible_model_files = list(user_dir.glob("*.keras"))
-            expected_ext = ".keras"
-        else:  # pytorch
-            possible_model_files = list(user_dir.glob("*.pth"))
-            expected_ext = ".pth"
-        
-        if not possible_model_files:
-            error_msg = f"No {expected_ext} model file found after template execution"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
-            app.logger.error(error_msg)
-            return
-        
-        # Get the first .keras/.pth file (should be the one created by template)
-        source_model = possible_model_files[0]
-        
-        # Target name from config
-        target_model = model_path  # Already defined as: user_dir / f"{config['NN_NAME']}.keras"
-        
-        # Rename if necessary
-        if source_model != target_model:
-            app.logger.info(f"[{task_id}] Renaming model: {source_model.name} → {target_model.name}")
-            shutil.move(str(source_model), str(target_model))
-            app.logger.info(f"[{task_id}] ✓ Model renamed successfully")
-        else:
-            app.logger.info(f"[{task_id}] ✓ Model already has correct name: {target_model.name}")
-        
-        # Verify the model file exists with correct name
-        if not target_model.exists():
-            error_msg = f"Model file not found after rename: {target_model}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
-            app.logger.error(error_msg)
-            return
-        
-        app.logger.info(f"[{task_id}] ✓ Model ready: {target_model.name} ({target_model.stat().st_size / 1024 / 1024:.2f} MB)")
-
-
+        # ========== STEP 3: Data Generation (Download + Partition) ==========
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 3, 
-            "message": f"Downloading data on {gpu_info}...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
+            "message": "Downloading data...", 
+            "pid": process_pid
         }
         
         # Check for cancellation
         if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
             raise InterruptedError("Simulation cancelled by user")
 
-        # ========== STEP 7: Download data ==========
+        # Download data (no GPU needed)
+        env_no_gpu = os.environ.copy()
         cmd = f"{conda_activate} && cd {user_dir} && python -c 'from template_code import download_data; download_data(\"clean_data\")'"
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env_no_gpu)
         if result.returncode != 0:
             error_msg = f"Download data failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 3}
             app.logger.error(error_msg)
             return
         
-        # ========== STEP 7b: Partition data for FL clients (Non-IID) ==========
-        # Împarte datele descărcate în N partiții NON-IID, câte una per client.
-        # Non-IID conform FoolsGold paper: fiecare client primește o clasă dominantă
-        # (80% dintr-o clasă + 20% uniform din celelalte clase).
-        # Asta face ca update-urile clienților onești să fie DIVERSE (date diferite),
-        # iar sybil-urile (clienți malițioși) să aibă update-uri SIMILARE (aceleași date poisoned).
-        # FoolsGold detectează exact acest pattern de similaritate.
+
+        
+        # ========== STEP 3b: Partition data for FL clients (Non-IID) ==========
         partition_script = f"""
 import os, shutil, random
 from pathlib import Path
@@ -413,27 +315,26 @@ for i in range(N):
 """
 
         cmd = f"{conda_activate} && cd {user_dir} && python -c \"{partition_script}\""
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
+        result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env_no_gpu)
         if result.returncode != 0:
             error_msg = f"Data partitioning failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 3}
             app.logger.error(error_msg)
             return
         app.logger.info(f"Data partitioned: {result.stdout}")
         
+        # ========== STEP 4: Data Poisoning ==========
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 4, 
             "message": "Poisoning data...", 
-            "pid": process_pid,
-            "gpu_id": gpu_id
+            "pid": process_pid
         }
         
         # Check for cancellation
         if task_id not in shared_simulations or shared_simulations[task_id].get("status") == "cancelling":
             raise InterruptedError("Simulation cancelled by user")
 
-        # ========== STEP 8: Poison data (v2) ==========
         poison_script = Path(__file__).parent / "poison_data.py"
         test_file = user_dir / "results" / "attack_info.json"
         
@@ -468,14 +369,109 @@ for i in range(N):
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash")
         if result.returncode != 0:
             error_msg = f"Poison data failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 4}
             app.logger.error(error_msg)
             return
         
-        # ========== STEP 5-6: FL simulations WITH GPU ==========
+        # ========== STEP 5: Allocate GPU ==========
+        app.logger.info(f"[{task_id}] Allocating GPU...")
         shared_simulations[task_id] = {
             "status": "running", 
             "step": 5, 
+            "message": "Allocating GPU...", 
+            "pid": process_pid
+        }
+        
+        # Allocate GPU (blocks until available)
+        gpu_id = gpu_manager.allocate_gpu(task_id, timeout=600)
+        
+        if gpu_id == -1:
+            app.logger.info(f"[{task_id}] Using CPU mode")
+            gpu_info = "CPU"
+        else:
+            app.logger.info(f"[{task_id}] Allocated GPU {gpu_id}")
+            gpu_info = f"GPU {gpu_id}"
+        
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 5, 
+            "message": f"GPU allocated: {gpu_info}", 
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+        
+        # Set CUDA_VISIBLE_DEVICES for GPU-dependent subprocesses
+        env = os.environ.copy()
+        env['CUDA_VISIBLE_DEVICES'] = str(gpu_id)
+        
+        # Allow TensorFlow GPU memory growth
+        if framework == "tensorflow":
+            env['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+        
+        # ========== STEP 6: Execute template code WITH GPU ==========
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 6, 
+            "message": f"Executing template code on {gpu_info}...", 
+            "pid": process_pid,
+            "gpu_id": gpu_id
+        }
+        
+        cmd = f"{conda_activate} && cd {user_dir} && python template_code.py"
+        result = subprocess.run(
+            cmd, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            executable="/bin/bash", 
+            timeout=600,
+            env=env  # Pass modified environment
+        )
+        
+        if result.returncode != 0:
+            error_msg = f"Template execution failed: {result.stderr}\nStdout: {result.stdout}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 6}
+            app.logger.error(error_msg)
+            return
+        
+        # Rename model file
+        app.logger.info(f"[{task_id}] Looking for model file to rename...")
+        
+        if framework == "tensorflow":
+            possible_model_files = list(user_dir.glob("*.keras"))
+            expected_ext = ".keras"
+        else:  # pytorch
+            possible_model_files = list(user_dir.glob("*.pth"))
+            expected_ext = ".pth"
+        
+        if not possible_model_files:
+            error_msg = f"No {expected_ext} model file found after template execution"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 6}
+            app.logger.error(error_msg)
+            return
+        
+        source_model = possible_model_files[0]
+        target_model = model_path
+        
+        if source_model != target_model:
+            app.logger.info(f"[{task_id}] Renaming model: {source_model.name} → {target_model.name}")
+            shutil.move(str(source_model), str(target_model))
+            app.logger.info(f"[{task_id}] ✓ Model renamed successfully")
+        else:
+            app.logger.info(f"[{task_id}] ✓ Model already has correct name: {target_model.name}")
+        
+        if not target_model.exists():
+            error_msg = f"Model file not found after rename: {target_model}"
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 6}
+            app.logger.error(error_msg)
+            return
+        
+        app.logger.info(f"[{task_id}] ✓ Model ready: {target_model.name} ({target_model.stat().st_size / 1024 / 1024:.2f} MB)")
+
+        # ========== STEP 7: FL Simulation (Clean) ==========
+        shared_simulations[task_id] = {
+            "status": "running", 
+            "step": 7, 
             "message": f"Running FL simulation (clean) on {gpu_info}...", 
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -489,15 +485,14 @@ for i in range(N):
         fd_script = Path(__file__).parent / "fd_simulator.py"
         test_file_clean = user_dir / "results" / "clean_metrics.json"
         test_file_clean.parent.mkdir(parents=True, exist_ok=True)
-        # test_file_clean.touch()
         
         cmd = (
             f"{conda_activate} && "
             f"python {fd_script} "
-            f"{test_file_clean} "                     # test_file (full path)
+            f"{test_file_clean} "
             f"{config['N']} "
             f"{config['M']} "
-            f"{model_path} "                        # NN_NAME_PATH (full model path)
+            f"{model_path} "
             f"{user_dir / 'clean_data'} "
             f"{user_dir / 'clean_data'} "
             f"{config['R']} "
@@ -509,14 +504,14 @@ for i in range(N):
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
             error_msg = f"Clean FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 7}
             app.logger.error(error_msg)
             return
 
-        # ========== STEP 6: FL simulation (Clean + Data Poison Protection) ==========
+        # ========== STEP 8: FL simulation (Clean + Data Poison Protection) ==========
         shared_simulations[task_id] = {
             "status": "running", 
-            "step": 6, 
+            "step": 8, 
             "message": f"Running FL simulation (clean + DP protection) on {gpu_info}...", 
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -548,13 +543,14 @@ for i in range(N):
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
             error_msg = f"Clean DP FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 8}
             app.logger.error(error_msg)
             return
 
+        # ========== STEP 9: FL simulation (Poisoned) ==========
         shared_simulations[task_id] = {
             "status": "running", 
-            "step": 7, 
+            "step": 9, 
             "message": f"Running FL simulation (poisoned) on {gpu_info}...", 
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -567,15 +563,14 @@ for i in range(N):
         # Run poisoned FL simulation WITH GPU
         test_file_poisoned = user_dir / "results" / "poisoned_metrics.json"
         test_file_poisoned.parent.mkdir(parents=True, exist_ok=True)
-        # test_file_poisoned.touch()
         
         cmd = (
             f"{conda_activate} && "
             f"python {fd_script} "
-            f"{test_file_poisoned} "                  # test_file (full path)
+            f"{test_file_poisoned} "
             f"{config['N']} "
             f"{config['M']} "
-            f"{model_path} "                        # NN_NAME_PATH (full model path)
+            f"{model_path} "
             f"{user_dir / 'clean_data'} "
             f"{user_dir / 'clean_data_poisoned'} "
             f"{config['R']} "
@@ -587,14 +582,14 @@ for i in range(N):
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
             error_msg = f"Poisoned FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 9}
             app.logger.error(error_msg)
             return
 
-        # ========== STEP 8: FL simulation with Data Poison Protection ==========
+        # ========== STEP 10: FL simulation with Data Poison Protection ==========
         shared_simulations[task_id] = {
             "status": "running",
-            "step": 8,
+            "step": 10,
             "message": f"Running FL simulation (poisoned + DP protection) on {gpu_info}...",
             "pid": process_pid,
             "gpu_id": gpu_id
@@ -626,14 +621,14 @@ for i in range(N):
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
             error_msg = f"Poisoned DP FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
-            shared_simulations[task_id] = {"status": "error", "message": error_msg}
+            shared_simulations[task_id] = {"status": "error", "message": error_msg, "step": 10}
             app.logger.error(error_msg)
             return
 
-        # ========== STEP 9: Generate results ==========
+        # ========== STEP 11: Generate results ==========
         shared_simulations[task_id] = {
             "status": "running",
-            "step": 9,
+            "step": 11,
             "message": "Generating analysis...",
             "pid": process_pid,
             "gpu_id": gpu_id
