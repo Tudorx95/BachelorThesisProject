@@ -62,3 +62,44 @@ code {
 .dark .sidebar-scroll {
   scrollbar-color: #4b5563 #1f2937;
 }
+
+/* Page scrollbar styling */
+.page-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.page-scroll::-webkit-scrollbar-track {
+  background: #f9fafb;
+}
+
+.page-scroll::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 4px;
+}
+
+.page-scroll::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
+
+.dark .page-scroll::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+.dark .page-scroll::-webkit-scrollbar-thumb {
+  background: #4b5563;
+  border-radius: 4px;
+}
+
+.dark .page-scroll::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
+}
+
+.page-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db #f9fafb;
+}
+
+.dark .page-scroll {
+  scrollbar-color: #4b5563 #111827;
+}

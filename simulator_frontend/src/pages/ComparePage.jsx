@@ -15,7 +15,7 @@ export default function ComparePage({ onBack, token, activeProjectId, projects }
     const getFileName = (fileId) => {
         if (!projects) return 'Unknown File';
         for (const project of projects) {
-            const file = project.files?.find(f => f.id === fileId);
+            const file = project.files?.find(f => String(f.id) === String(fileId));
             if (file) return file.name;
         }
         return 'Unknown File';
@@ -93,7 +93,7 @@ export default function ComparePage({ onBack, token, activeProjectId, projects }
             {/* TopBar with theme toggle */}
             <TopBar disableNavigation={true} />
 
-            <div className="flex-1 p-6 overflow-auto">
+            <div className="flex-1 p-6 overflow-auto page-scroll">
                 {/* Header */}
                 <div className="flex items-center gap-4 mb-6">
                     <button

@@ -367,7 +367,7 @@ def _model_compile(model: nn.Module):
     # LR mic (1e-4) — modelul e deja antrenat la 95% acuratețe.
     # Un LR prea mare (ex: 1e-3) distruge ponderile în FL
     # (catastrophic forgetting amplificat de federated averaging).
-    model.optimizer = optim.Adam(model.parameters(), lr=0.0001)
+    model.optimizer = optim.Adam(model.parameters(), lr=0.001)
     
     # Flag pentru a ști că modelul e "compilat"
     model.is_compiled = True
