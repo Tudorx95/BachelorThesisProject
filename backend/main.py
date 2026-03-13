@@ -1355,6 +1355,7 @@ async def compare_simulations(
             "simulation1": {
                 "id": sim1.id,
                 "task_id": sim1.task_id,
+                "file_id": sim1.file_id,
                 "config": sim1.simulation_config,
                 "results": sim1.results,
                 "completed_at": sim1.completed_at.isoformat() if sim1.completed_at else None
@@ -1362,6 +1363,7 @@ async def compare_simulations(
             "simulation2": {
                 "id": sim2.id,
                 "task_id": sim2.task_id,
+                "file_id": sim2.file_id,
                 "config": sim2.simulation_config,
                 "results": sim2.results,
                 "completed_at": sim2.completed_at.isoformat() if sim2.completed_at else None
