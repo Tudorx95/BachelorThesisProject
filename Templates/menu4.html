@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Simulation Comparative Analysis | Federated Defense</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error": "#ff716c",
+                        "surface-container-lowest": "#000000",
+                        "surface-dim": "#060e20",
+                        "surface-tint": "#90abff",
+                        "on-primary-container": "#001e5a",
+                        "outline-variant": "#40485d",
+                        "secondary": "#69f6b8",
+                        "on-tertiary-fixed": "#3a0003",
+                        "on-primary-fixed": "#000000",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-low": "#091328",
+                        "on-secondary-container": "#e1ffec",
+                        "primary-container": "#7b9cff",
+                        "background": "#060e20",
+                        "primary-fixed-dim": "#658eff",
+                        "primary-dim": "#316bf3",
+                        "secondary-fixed": "#69f6b8",
+                        "on-primary": "#002873",
+                        "inverse-on-surface": "#4d556b",
+                        "tertiary-dim": "#ff716a",
+                        "on-tertiary-container": "#1f0001",
+                        "tertiary-container": "#fd4e4d",
+                        "surface-variant": "#192540",
+                        "on-secondary": "#005a3c",
+                        "error-dim": "#d7383b",
+                        "tertiary": "#ff716a",
+                        "surface-container": "#0f1930",
+                        "on-secondary-fixed-variant": "#006544",
+                        "secondary-container": "#006c49",
+                        "secondary-dim": "#58e7ab",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "on-error-container": "#ffa8a3",
+                        "primary": "#90abff",
+                        "on-secondary-fixed": "#00452d",
+                        "surface-container-high": "#141f38",
+                        "tertiary-fixed": "#ff928b",
+                        "inverse-primary": "#0053dc",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "on-surface": "#dee5ff",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "on-tertiary": "#490005",
+                        "outline": "#6d758c",
+                        "on-surface-variant": "#a3aac4",
+                        "on-error": "#490006",
+                        "error-container": "#9f0519",
+                        "surface-bright": "#1f2b49",
+                        "primary-fixed": "#7b9cff",
+                        "on-background": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container-highest": "#192540",
+                        "surface": "#060e20"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .glass-panel {
+            background: rgba(25, 37, 64, 0.7);
+            backdrop-filter: blur(24px);
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary">
+<div class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="hidden md:flex flex-col h-screen border-r border-[#dee5ff]/15 bg-[#0b1426] dark:bg-slate-900 w-64 shrink-0">
+<div class="p-6">
+<div class="text-lg font-bold text-[#dee5ff] font-headline">Project Alpha</div>
+<div class="font-['Inter'] text-xs font-medium text-[#dee5ff]/50 uppercase tracking-widest mt-1">Vulnerability Research</div>
+</div>
+<nav class="flex-1 px-2 space-y-1">
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">folder_open</span>
+<span class="font-['Inter'] text-xs font-medium">Projects</span>
+</a>
+<a class="flex items-center text-[#69f6b8] bg-[#69f6b8]/10 rounded-lg mx-2 my-1 px-4 py-3" href="#">
+<span class="material-symbols-outlined mr-3">hub</span>
+<span class="font-['Inter'] text-xs font-medium">Active Nodes</span>
+</a>
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">security</span>
+<span class="font-['Inter'] text-xs font-medium">Poisoning Alerts</span>
+</a>
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">verified_user</span>
+<span class="font-['Inter'] text-xs font-medium">Defense Logs</span>
+</a>
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">analytics</span>
+<span class="font-['Inter'] text-xs font-medium">System Health</span>
+</a>
+</nav>
+<div class="p-4 border-t border-[#dee5ff]/10">
+<button class="w-full bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold py-3 px-4 rounded-xl flex items-center justify-center space-x-2 transition-transform active:scale-95">
+<span class="material-symbols-outlined">add</span>
+<span class="font-headline text-sm tracking-tight">New Simulation</span>
+</button>
+</div>
+<div class="px-2 pb-6 space-y-1">
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">description</span>
+<span class="font-['Inter'] text-xs font-medium uppercase tracking-tighter">Documentation</span>
+</a>
+<a class="flex items-center text-[#dee5ff]/50 hover:text-[#dee5ff] px-4 py-3 hover:bg-[#90abff]/5 transition-colors duration-200" href="#">
+<span class="material-symbols-outlined mr-3">terminal</span>
+<span class="font-['Inter'] text-xs font-medium uppercase tracking-tighter">Terminal</span>
+</a>
+</div>
+</aside>
+<div class="flex-1 flex flex-col h-screen overflow-hidden">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 bg-[#060e20] dark:bg-slate-950 shrink-0">
+<div class="text-xl font-black text-[#dee5ff] tracking-tighter font-headline uppercase">Federated Simulation &amp; Defense</div>
+<div class="hidden lg:flex items-center space-x-8">
+<a class="text-[#dee5ff]/60 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold hover:text-[#90abff] transition-colors duration-200" href="#">Network</a>
+<a class="text-[#90abff] border-b-2 border-[#90abff] pb-1 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold" href="#">Threats</a>
+<a class="text-[#dee5ff]/60 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold hover:text-[#90abff] transition-colors duration-200" href="#">Archive</a>
+</div>
+<div class="flex items-center space-x-6">
+<div class="flex items-center space-x-3">
+<span class="material-symbols-outlined text-[#dee5ff]/60 cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="material-symbols-outlined text-[#dee5ff]/60 cursor-pointer hover:text-primary transition-colors">settings</span>
+<span class="material-symbols-outlined text-[#dee5ff]/60 cursor-pointer hover:text-primary transition-colors">help</span>
+</div>
+<div class="h-8 w-8 rounded-full bg-surface-variant flex items-center justify-center border border-outline/20">
+<img alt="" class="h-full w-full rounded-full object-cover" data-alt="Researcher Profile Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAAVfgohqIC5bijZPkdA2_nnajRbhWp9xUsxg8Hb2xpuUF18YVrglSNF1wZympYxUpK-ECcgJen3XrdG_hOgO59VPPUeV-xyC0Nx3Z7-9LTv4nMhwGcaelwcuEsHcUFSKHJKoJqtElplHae-B_BrWFsrNu8hgCpoOMiPE0e8sRdMfe1pbqpa1zEnoC_DFyUHTwCRGN_rIExMOxj4Dmwy3ssTk2oLO46PW7g5a16N6oWCFCxqdtL9uOu_ALglQ0d2BVySpPYnrLgcaQ"/>
+</div>
+</div>
+</header>
+<!-- Main Content Area -->
+<main class="flex-1 overflow-y-auto bg-surface-dim p-6 space-y-6">
+<!-- Page Header & Triage -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-outline-variant/10 pb-6">
+<div>
+<span class="text-primary font-mono text-[10px] tracking-[0.2em] uppercase mb-2 block">Analytical Delta Engine / V 4.2</span>
+<h1 class="text-4xl md:text-5xl font-black font-headline tracking-tighter text-on-surface">Simulation Comparative Analysis</h1>
+</div>
+<div class="flex items-center gap-3">
+<div class="px-4 py-2 bg-surface-container rounded-lg border border-outline-variant/20 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">Reference Baseline</span>
+<span class="text-sm font-bold text-secondary">SIM_GAMMA_90</span>
+</div>
+<div class="px-4 py-2 bg-surface-container rounded-lg border border-outline-variant/20 flex flex-col">
+<span class="text-[10px] text-on-surface-variant font-medium uppercase tracking-wider">Target Variant</span>
+<span class="text-sm font-bold text-tertiary">SIM_DELTA_POISON_02</span>
+</div>
+</div>
+</div>
+<!-- Metrics Bento Grid -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+<div class="md:col-span-1 bg-surface-container-low p-6 rounded-xl border border-outline-variant/10 relative overflow-hidden group">
+<div class="absolute top-0 right-0 p-2">
+<span class="material-symbols-outlined text-tertiary opacity-20 group-hover:opacity-100 transition-opacity">warning</span>
+</div>
+<h3 class="text-on-surface-variant text-[10px] uppercase font-bold tracking-widest mb-4">Accuracy Delta</h3>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black font-headline text-tertiary">-18.4%</span>
+<span class="text-xs text-on-surface-variant font-mono">Clean vs Poisoned</span>
+</div>
+<div class="mt-4 h-1 bg-surface-variant rounded-full overflow-hidden">
+<div class="h-full bg-tertiary w-[82%]" style="box-shadow: 0 0 10px rgba(255, 113, 106, 0.4);"></div>
+</div>
+</div>
+<div class="md:col-span-1 bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<h3 class="text-on-surface-variant text-[10px] uppercase font-bold tracking-widest mb-4">Training Efficiency</h3>
+<div class="flex items-baseline gap-2">
+<span class="text-4xl font-black font-headline text-secondary">+12.2%</span>
+<span class="text-xs text-on-surface-variant font-mono">Convergence</span>
+</div>
+<div class="mt-4 flex items-center gap-1">
+<span class="material-symbols-outlined text-secondary text-sm" style="font-variation-settings: 'FILL' 1;">trending_up</span>
+<span class="text-[10px] text-secondary font-bold">OPTIMAL PATH</span>
+</div>
+</div>
+<div class="md:col-span-2 bg-surface-container-low p-6 rounded-xl border border-outline-variant/10 flex justify-between">
+<div class="flex flex-col justify-between">
+<h3 class="text-on-surface-variant text-[10px] uppercase font-bold tracking-widest">Active Protection Score</h3>
+<div>
+<span class="text-4xl font-black font-headline text-primary">88/100</span>
+<p class="text-xs text-on-surface-variant mt-1">Heuristic sanitization active</p>
+</div>
+</div>
+<div class="w-24 h-24 flex items-center justify-center relative">
+<svg class="w-full h-full transform -rotate-90" viewbox="0 0 36 36">
+<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="rgba(144, 171, 255, 0.1)" stroke-width="3"></path>
+<path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#90abff" stroke-dasharray="88, 100" stroke-width="3"></path>
+</svg>
+<span class="absolute inset-0 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified</span>
+</span>
+</div>
+</div>
+</div>
+<!-- Visualization Split-Pane -->
+<div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+<!-- Accuracy Side-by-Side Line Charts -->
+<div class="bg-surface-container p-6 rounded-xl border border-outline-variant/10 flex flex-col h-[400px]">
+<div class="flex items-center justify-between mb-6">
+<h3 class="font-headline font-bold text-lg tracking-tight">Accuracy Over Rounds</h3>
+<div class="flex gap-4">
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-secondary"></div>
+<span class="text-[10px] font-bold uppercase text-on-surface-variant">Clean Simulation</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-3 h-3 rounded-full bg-tertiary"></div>
+<span class="text-[10px] font-bold uppercase text-on-surface-variant">Poisoned Simulation</span>
+</div>
+</div>
+</div>
+<div class="flex-1 flex items-end gap-1 px-2 relative">
+<!-- Mock Line Chart Visualization -->
+<div class="absolute inset-0 flex flex-col justify-between py-2 border-l border-b border-outline-variant/20">
+<div class="w-full border-t border-dashed border-outline-variant/10 text-[8px] text-on-surface-variant pl-1">100%</div>
+<div class="w-full border-t border-dashed border-outline-variant/10 text-[8px] text-on-surface-variant pl-1">75%</div>
+<div class="w-full border-t border-dashed border-outline-variant/10 text-[8px] text-on-surface-variant pl-1">50%</div>
+<div class="w-full border-t border-dashed border-outline-variant/10 text-[8px] text-on-surface-variant pl-1">25%</div>
+<div class="w-full border-t border-dashed border-outline-variant/10 text-[8px] text-on-surface-variant pl-1">0%</div>
+</div>
+<!-- Visual Data Waves using background SVG pattern or simplified shapes -->
+<div class="w-full h-full relative z-10 overflow-hidden">
+<svg class="w-full h-full" preserveaspectratio="none" viewbox="0 0 400 200">
+<!-- Clean Line -->
+<path d="M0 150 Q 50 140 100 80 T 200 60 T 300 45 T 400 40" fill="none" stroke="#69f6b8" stroke-width="3"></path>
+<!-- Poisoned Line -->
+<path d="M0 150 Q 50 145 100 120 T 200 140 T 300 160 T 400 175" fill="none" stroke="#ff716a" stroke-dasharray="4" stroke-width="3"></path>
+<!-- Gradients -->
+<defs>
+<lineargradient id="cleanGrad" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#69f6b8" stop-opacity="0.2"></stop>
+<stop offset="100%" stop-color="#69f6b8" stop-opacity="0"></stop>
+</lineargradient>
+</defs>
+<path d="M0 150 Q 50 140 100 80 T 200 60 T 300 45 T 400 40 V 200 H 0 Z" fill="url(#cleanGrad)"></path>
+</svg>
+</div>
+</div>
+<div class="mt-4 flex justify-between px-6 font-mono text-[9px] text-on-surface-variant">
+<span>ROUND 0</span>
+<span>ROUND 250</span>
+<span>ROUND 500</span>
+<span>ROUND 750</span>
+<span>ROUND 1000</span>
+</div>
+</div>
+<!-- Tactical Logs / Monitor -->
+<div class="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/10 font-mono text-xs overflow-hidden flex flex-col h-[400px]">
+<div class="flex items-center justify-between mb-4 text-on-surface-variant border-b border-outline-variant/10 pb-2">
+<span class="flex items-center gap-2">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+                                REAL-TIME VARIANCE LOG
+                            </span>
+<span>TERM_STDOUT</span>
+</div>
+<div class="flex-1 space-y-2 overflow-y-auto custom-scrollbar">
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:01</span>
+<span class="text-primary">[SYSTEM]</span>
+<span>Initializing comparative engine...</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:04</span>
+<span class="text-secondary">[DEFENSE]</span>
+<span class="text-secondary">Sanitizer cluster 7 verified. Protocol Alpha-Red active.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:08</span>
+<span class="text-tertiary">[ATTACK]</span>
+<span class="text-tertiary">Poisoning trigger detected in Node #428. Delta -0.42.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:12</span>
+<span class="text-primary">[DATA]</span>
+<span>Aggregating Round 842 data points... Success.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:15</span>
+<span class="text-tertiary">[WARNING]</span>
+<span class="text-tertiary">Model drift exceeding threshold 14%. Re-calculating.</span>
+</div>
+<div class="flex gap-4">
+<span class="text-on-surface-variant/40">10:42:21</span>
+<span class="text-secondary">[DEFENSE]</span>
+<span>Weights sanitized. Accuracy recovered +2.1%.</span>
+</div>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/10 flex items-center text-primary-dim">
+<span class="mr-2">&gt;</span>
+<span class="animate-pulse">_</span>
+</div>
+</div>
+</div>
+<!-- Detailed Node Variance Table -->
+<div class="bg-surface-container rounded-xl overflow-hidden border border-outline-variant/10">
+<div class="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+<h3 class="font-headline font-bold text-lg tracking-tight">Detailed Node Variance</h3>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-outline-variant/20 rounded-lg hover:bg-surface-variant transition-colors">Export CSV</button>
+<button class="px-3 py-1 text-[10px] font-bold uppercase tracking-widest border border-outline-variant/20 rounded-lg hover:bg-surface-variant transition-colors">Filter</button>
+</div>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high">
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Cluster ID</th>
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Node Count</th>
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Clean Acc</th>
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Poisoned Acc</th>
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Variance Delta</th>
+<th class="px-6 py-3 font-mono text-[10px] text-on-surface-variant uppercase tracking-widest text-right">Sanitization</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-outline-variant/5">
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-bold text-sm">PX-01-EUROPE</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-on-surface-variant">1,240</td>
+<td class="px-6 py-4 text-sm font-bold">98.4%</td>
+<td class="px-6 py-4 text-sm font-bold">94.1%</td>
+<td class="px-6 py-4">
+<span class="text-tertiary font-bold text-sm">-4.3%</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="text-[10px] font-bold px-2 py-1 rounded bg-secondary/10 text-secondary border border-secondary/20">VERIFIED</span>
+</td>
+</tr>
+<tr class="bg-surface-container-low hover:bg-surface-bright transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-bold text-sm">PX-04-ASIA</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-on-surface-variant">842</td>
+<td class="px-6 py-4 text-sm font-bold">96.2%</td>
+<td class="px-6 py-4 text-sm font-bold">72.8%</td>
+<td class="px-6 py-4">
+<span class="text-tertiary font-bold text-sm">-23.4%</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="text-[10px] font-bold px-2 py-1 rounded bg-tertiary/10 text-tertiary border border-tertiary/20">BREACHED</span>
+</td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-bold text-sm">PX-09-LATAM</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-on-surface-variant">520</td>
+<td class="px-6 py-4 text-sm font-bold">94.5%</td>
+<td class="px-6 py-4 text-sm font-bold">92.9%</td>
+<td class="px-6 py-4">
+<span class="text-secondary font-bold text-sm">-1.6%</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="text-[10px] font-bold px-2 py-1 rounded bg-secondary/10 text-secondary border border-secondary/20">STABLE</span>
+</td>
+</tr>
+<tr class="bg-surface-container-low hover:bg-surface-bright transition-colors">
+<td class="px-6 py-4">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="font-bold text-sm">PX-12-US-WEST</span>
+</div>
+</td>
+<td class="px-6 py-4 text-sm font-mono text-on-surface-variant">2,110</td>
+<td class="px-6 py-4 text-sm font-bold">99.1%</td>
+<td class="px-6 py-4 text-sm font-bold">81.5%</td>
+<td class="px-6 py-4">
+<span class="text-tertiary font-bold text-sm">-17.6%</span>
+</td>
+<td class="px-6 py-4 text-right">
+<span class="text-[10px] font-bold px-2 py-1 rounded bg-error-container/10 text-error-dim border border-error-container/20">CRITICAL</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</main>
+</div>
+</div>
+<!-- Floating Action Button for Simulation Recalibration -->
+<button class="fixed bottom-8 right-8 bg-tertiary hover:bg-tertiary-container text-on-tertiary-container p-4 rounded-full shadow-2xl flex items-center justify-center transition-all hover:scale-110 active:scale-95 group">
+<span class="material-symbols-outlined mr-2 group-hover:rotate-180 transition-transform">refresh</span>
+<span class="font-headline font-bold text-sm pr-2">Recalibrate Comparison</span>
+</button>
+</body></html>

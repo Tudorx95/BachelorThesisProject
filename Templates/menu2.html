@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error": "#ff716c",
+                        "surface-container-lowest": "#000000",
+                        "surface-dim": "#060e20",
+                        "surface-tint": "#90abff",
+                        "on-primary-container": "#001e5a",
+                        "outline-variant": "#40485d",
+                        "secondary": "#69f6b8",
+                        "on-tertiary-fixed": "#3a0003",
+                        "on-primary-fixed": "#000000",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-low": "#091328",
+                        "on-secondary-container": "#e1ffec",
+                        "primary-container": "#7b9cff",
+                        "background": "#060e20",
+                        "primary-fixed-dim": "#658eff",
+                        "primary-dim": "#316bf3",
+                        "secondary-fixed": "#69f6b8",
+                        "on-primary": "#002873",
+                        "inverse-on-surface": "#4d556b",
+                        "tertiary-dim": "#ff716a",
+                        "on-tertiary-container": "#1f0001",
+                        "tertiary-container": "#fd4e4d",
+                        "surface-variant": "#192540",
+                        "on-secondary": "#005a3c",
+                        "error-dim": "#d7383b",
+                        "tertiary": "#ff716a",
+                        "surface-container": "#0f1930",
+                        "on-secondary-fixed-variant": "#006544",
+                        "secondary-container": "#006c49",
+                        "secondary-dim": "#58e7ab",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "on-error-container": "#ffa8a3",
+                        "primary": "#90abff",
+                        "on-secondary-fixed": "#00452d",
+                        "surface-container-high": "#141f38",
+                        "tertiary-fixed": "#ff928b",
+                        "inverse-primary": "#0053dc",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "on-surface": "#dee5ff",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "on-tertiary": "#490005",
+                        "outline": "#6d758c",
+                        "on-surface-variant": "#a3aac4",
+                        "on-error": "#490006",
+                        "error-container": "#9f0519",
+                        "surface-bright": "#1f2b49",
+                        "primary-fixed": "#7b9cff",
+                        "on-background": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container-highest": "#192540",
+                        "surface": "#060e20"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .node-pulse {
+            box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.4);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(105, 246, 184, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(105, 246, 184, 0); }
+        }
+        .malicious-pulse {
+            box-shadow: 0 0 0 0 rgba(255, 113, 106, 0.4);
+            animation: pulse-red 2s infinite;
+        }
+        @keyframes pulse-red {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 113, 106, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 10px rgba(255, 113, 106, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 113, 106, 0); }
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary/30 selection:text-primary min-h-screen overflow-hidden flex flex-col">
+<!-- TopNavBar -->
+<header class="flex justify-between items-center w-full px-6 h-16 bg-[#060e20] dark:bg-slate-950">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-black text-[#dee5ff] tracking-tighter uppercase font-headline">Federated Simulation &amp; Defense</h1>
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold text-[#dee5ff]/60 hover:text-[#90abff] transition-colors duration-200" href="#">Network</a>
+<a class="font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold text-[#90abff] border-b-2 border-[#90abff] pb-1" href="#">Threats</a>
+<a class="font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold text-[#dee5ff]/60 hover:text-[#90abff] transition-colors duration-200" href="#">Archive</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative group">
+<span class="material-symbols-outlined text-[#dee5ff]/60 cursor-pointer hover:text-primary transition-colors">notifications</span>
+<span class="absolute -top-1 -right-1 w-2 h-2 bg-tertiary rounded-full"></span>
+</div>
+<span class="material-symbols-outlined text-[#dee5ff]/60 cursor-pointer hover:text-primary transition-colors">settings</span>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-headline font-bold text-xs uppercase px-4 py-2 rounded-xl transition-all active:scale-95">
+                Deploy Simulation
+            </button>
+</div>
+</header>
+<div class="flex flex-1 overflow-hidden">
+<!-- SideNavBar -->
+<aside class="flex flex-col h-full w-64 bg-[#0b1426] dark:bg-slate-900 border-r border-[#dee5ff]/15">
+<div class="p-6">
+<div class="flex items-center gap-3 mb-8">
+<div class="w-10 h-10 rounded-lg bg-surface-variant flex items-center justify-center border border-outline-variant/30">
+<span class="material-symbols-outlined text-secondary" style="font-variation-settings: 'FILL' 1;">security</span>
+</div>
+<div>
+<div class="text-lg font-bold text-[#dee5ff] font-headline">Project Alpha</div>
+<div class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold">Vulnerability Research</div>
+</div>
+</div>
+<nav class="space-y-1">
+<a class="flex items-center gap-3 px-4 py-3 text-[#dee5ff]/50 hover:text-[#dee5ff] font-['Inter'] text-xs font-medium hover:bg-[#90abff]/5 transition-all group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:text-primary">folder_open</span>
+                        Projects
+                    </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#dee5ff]/50 hover:text-[#dee5ff] font-['Inter'] text-xs font-medium hover:bg-[#90abff]/5 transition-all group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:text-primary">hub</span>
+                        Active Nodes
+                    </a>
+<a class="flex items-center gap-3 text-[#69f6b8] bg-[#69f6b8]/10 rounded-lg mx-2 my-1 px-4 py-3 font-['Inter'] text-xs font-medium group" href="#">
+<span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 1;">security</span>
+                        Poisoning Alerts
+                    </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#dee5ff]/50 hover:text-[#dee5ff] font-['Inter'] text-xs font-medium hover:bg-[#90abff]/5 transition-all group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:text-primary">verified_user</span>
+                        Defense Logs
+                    </a>
+<a class="flex items-center gap-3 px-4 py-3 text-[#dee5ff]/50 hover:text-[#dee5ff] font-['Inter'] text-xs font-medium hover:bg-[#90abff]/5 transition-all group" href="#">
+<span class="material-symbols-outlined text-xl group-hover:text-primary">analytics</span>
+                        System Health
+                    </a>
+</nav>
+</div>
+<div class="mt-auto p-4 space-y-2">
+<button class="w-full py-3 bg-primary-dim/20 text-primary border border-primary/20 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-primary/20 transition-all font-headline">
+                    New Simulation
+                </button>
+<div class="pt-4 space-y-1">
+<a class="flex items-center gap-3 px-4 py-2 text-[#dee5ff]/40 hover:text-[#dee5ff] text-[11px] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">description</span>
+                        Documentation
+                    </a>
+<a class="flex items-center gap-3 px-4 py-2 text-[#dee5ff]/40 hover:text-[#dee5ff] text-[11px] font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-lg">terminal</span>
+                        Terminal
+                    </a>
+</div>
+</div>
+</aside>
+<!-- Main Content -->
+<main class="flex-1 flex flex-col bg-surface overflow-hidden">
+<!-- Progress Header -->
+<section class="p-6 bg-surface-container-low flex flex-col gap-4 border-b border-outline-variant/10">
+<div class="flex justify-between items-end">
+<div>
+<h2 class="font-headline text-2xl font-bold text-on-surface tracking-tight uppercase">Simulation Monitor</h2>
+<p class="text-xs text-on-surface-variant font-mono mt-1">UUID: SIM-8842-AX-091</p>
+</div>
+<div class="text-right">
+<span class="font-headline text-3xl font-black text-secondary tracking-tighter">Round 42<span class="text-on-surface-variant text-lg font-normal">/100</span></span>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mt-1">Execution Progress</p>
+</div>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden flex">
+<div class="h-full bg-secondary w-[42%] transition-all duration-1000 relative">
+<div class="absolute top-0 right-0 h-full w-4 shadow-[0_0_15px_#69f6b8]"></div>
+</div>
+</div>
+<div class="flex gap-8">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<span class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Active Nodes: 124</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-tertiary"></div>
+<span class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Malicious Nodes: 12</span>
+</div>
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+<span class="text-[10px] uppercase font-bold tracking-widest text-on-surface-variant">Accuracy: 94.2%</span>
+</div>
+</div>
+</section>
+<!-- Main Interactive Area -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Terminal Column -->
+<section class="w-[450px] bg-surface-container-lowest flex flex-col border-r border-outline-variant/10">
+<div class="p-3 border-b border-outline-variant/20 flex justify-between items-center bg-surface-container">
+<span class="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest">Backend Log Stream</span>
+<div class="flex gap-1.5">
+<div class="w-2 h-2 rounded-full bg-outline-variant/40"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/40"></div>
+<div class="w-2 h-2 rounded-full bg-outline-variant/40"></div>
+</div>
+</div>
+<div class="flex-1 p-4 font-mono text-[11px] leading-relaxed overflow-y-auto space-y-1">
+<p class="text-on-surface-variant">[09:42:01.442] <span class="text-secondary">INFO</span> Initializing Round 42 federated averaging...</p>
+<p class="text-on-surface-variant">[09:42:01.445] <span class="text-primary">SYSTEM</span> Broadcasting global model to 124 edge nodes.</p>
+<p class="text-on-surface-variant">[09:42:01.512] <span class="text-secondary">NODE-004</span> Local update complete. Δw = 0.00412</p>
+<p class="text-tertiary">[09:42:01.602] <span class="text-tertiary">POISONING</span> Outlier detected in NODE-001 submission.</p>
+<p class="text-tertiary">[09:42:01.605] <span class="text-tertiary">ALERT</span> Sybil attack pattern recognized in First-M block.</p>
+<p class="text-on-surface-variant">[09:42:01.621] <span class="text-primary">DEFENSE</span> Activating Robust Aggregator [Krum-α].</p>
+<p class="text-on-surface-variant">[09:42:01.688] <span class="text-secondary">NODE-015</span> Gradient clipping applied. Resubmitting.</p>
+<p class="text-on-surface-variant">[09:42:01.710] <span class="text-secondary">INFO</span> Node 001 weight excluded from global update.</p>
+<p class="text-on-surface-variant">[09:42:01.812] <span class="text-secondary">INFO</span> Node 002 weight excluded from global update.</p>
+<p class="text-on-surface-variant">[09:42:01.905] <span class="text-secondary">INFO</span> Node 003 weight excluded from global update.</p>
+<p class="text-on-surface-variant">[09:42:02.112] <span class="text-primary">SYSTEM</span> Finalizing Round 42. Accuracy check in progress...</p>
+<p class="text-on-surface-variant">[09:42:02.342] <span class="text-on-surface">METRIC</span> Loss: 0.1142 | Validation: 0.9421</p>
+<div class="animate-pulse inline-block w-2 h-4 bg-primary ml-1 align-middle"></div>
+</div>
+<div class="p-3 bg-surface-container-low border-t border-outline-variant/20 flex gap-4">
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant uppercase font-bold">Latency</span>
+<span class="text-xs font-mono text-secondary">42ms</span>
+</div>
+<div class="flex flex-col">
+<span class="text-[9px] text-on-surface-variant uppercase font-bold">Throughput</span>
+<span class="text-xs font-mono text-secondary">1.2 GB/s</span>
+</div>
+</div>
+</section>
+<!-- Topology Map Column -->
+<section class="flex-1 bg-surface-dim relative flex flex-col">
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle, #40485d 1px, transparent 1px); background-size: 32px 32px;"></div>
+<div class="p-6 flex justify-between items-start z-10">
+<div>
+<h3 class="font-headline text-lg font-bold text-on-surface tracking-tight">NODE TOPOLOGY MAP</h3>
+<div class="flex items-center gap-2 mt-1">
+<span class="px-2 py-0.5 rounded bg-surface-container-high border border-outline-variant/30 text-[10px] text-on-surface-variant uppercase font-bold">Distribution: First M (12)</span>
+<span class="px-2 py-0.5 rounded bg-surface-container-high border border-outline-variant/30 text-[10px] text-on-surface-variant uppercase font-bold">Grid: Radial Cluster</span>
+</div>
+</div>
+<div class="flex gap-2">
+<button class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center hover:bg-surface-bright transition-colors border border-outline-variant/30">
+<span class="material-symbols-outlined text-sm">zoom_in</span>
+</button>
+<button class="w-8 h-8 rounded bg-surface-container-high flex items-center justify-center hover:bg-surface-bright transition-colors border border-outline-variant/30">
+<span class="material-symbols-outlined text-sm">fullscreen</span>
+</button>
+</div>
+</div>
+<!-- Topology Visualization Canvas -->
+<div class="flex-1 relative flex items-center justify-center p-12 overflow-hidden">
+<div class="relative w-full h-full max-w-2xl max-h-2xl flex flex-wrap gap-4 items-center justify-center">
+<!-- Node Items (Conceptual Layout) -->
+<!-- Malicious Group (First M) -->
+<div class="flex flex-wrap gap-6 justify-center max-w-lg">
+<!-- First 12 nodes are malicious based on "First M" selection -->
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center group cursor-help relative">
+<span class="text-[8px] font-mono text-on-tertiary">001</span>
+<div class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block w-32 bg-surface-container-highest p-2 rounded border border-tertiary/50 z-20">
+<p class="text-[9px] text-tertiary font-bold">MALICIOUS NODE</p>
+<p class="text-[8px] text-on-surface-variant">Type: Label Flip</p>
+</div>
+</div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">002</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">003</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">004</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">005</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">006</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">007</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">008</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">009</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">010</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">011</span></div>
+<div class="w-6 h-6 rounded-sm bg-tertiary malicious-pulse flex items-center justify-center relative"><span class="text-[8px] font-mono text-on-tertiary">012</span></div>
+<!-- Benign Nodes (Partial view of 124) -->
+<div class="w-6 h-6 rounded-sm bg-secondary node-pulse flex items-center justify-center opacity-60"><span class="text-[8px] font-mono text-on-secondary">013</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">014</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary node-pulse flex items-center justify-center opacity-70"><span class="text-[8px] font-mono text-on-secondary">015</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">016</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">017</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">018</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">019</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary node-pulse flex items-center justify-center opacity-80"><span class="text-[8px] font-mono text-on-secondary">020</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">021</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">022</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">023</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">024</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">025</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">026</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">027</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">028</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">029</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">030</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">031</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">032</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">033</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">034</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">035</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">036</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">037</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">038</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">039</span></div>
+<div class="w-6 h-6 rounded-sm bg-secondary flex items-center justify-center opacity-40"><span class="text-[8px] font-mono text-on-secondary">040</span></div>
+</div>
+<!-- Abstract connections using SVG -->
+<svg class="absolute inset-0 w-full h-full pointer-events-none opacity-20" preserveaspectratio="none" viewbox="0 0 100 100">
+<line stroke="#90abff" stroke-width="0.1" x1="10" x2="90" y1="10" y2="90"></line>
+<line stroke="#90abff" stroke-width="0.1" x1="90" x2="10" y1="10" y2="90"></line>
+<circle cx="50" cy="50" fill="none" r="40" stroke="#69f6b8" stroke-dasharray="2 2" stroke-width="0.05"></circle>
+</svg>
+</div>
+</div>
+<!-- Legend & Controls -->
+<div class="absolute bottom-6 left-6 right-6 flex justify-between items-end">
+<div class="p-4 bg-surface-container/80 backdrop-blur-md rounded-xl border border-outline-variant/30 flex flex-col gap-3 min-w-[200px]">
+<span class="text-[9px] text-on-surface-variant uppercase font-black tracking-widest">Topology Details</span>
+<div class="flex items-center justify-between gap-4">
+<span class="text-xs text-on-surface">Nodes:</span>
+<span class="text-xs font-mono text-secondary">124</span>
+</div>
+<div class="flex items-center justify-between gap-4">
+<span class="text-xs text-on-surface">Compromised:</span>
+<span class="text-xs font-mono text-tertiary">9.67%</span>
+</div>
+<div class="flex items-center justify-between gap-4">
+<span class="text-xs text-on-surface">Status:</span>
+<span class="text-xs font-mono text-secondary">RESILIENT</span>
+</div>
+</div>
+<div class="flex gap-3">
+<button class="px-6 py-2.5 bg-tertiary/10 text-tertiary border border-tertiary/20 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-tertiary/20 transition-all font-headline flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">dangerous</span>
+                                Halt Simulation
+                            </button>
+<button class="px-6 py-2.5 bg-secondary/10 text-secondary border border-secondary/20 rounded-xl text-xs font-bold uppercase tracking-wider hover:bg-secondary/20 transition-all font-headline flex items-center gap-2">
+<span class="material-symbols-outlined text-sm">security_update_good</span>
+                                Patch Nodes
+                            </button>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Bottom Data Strip -->
+<footer class="h-8 bg-surface-container-lowest border-t border-outline-variant/10 px-6 flex items-center justify-between">
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2">
+<div class="w-2 h-2 rounded-full bg-secondary"></div>
+<span class="text-[9px] uppercase font-bold tracking-widest text-on-surface-variant">System Status: Nominal</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-[9px] uppercase font-bold tracking-widest text-on-surface-variant">Uptime: 04h 12m 33s</span>
+</div>
+</div>
+<div class="flex items-center gap-4 text-[9px] text-on-surface-variant uppercase font-bold tracking-widest">
+<span>Server: US-EAST-SIM-01</span>
+<span class="text-primary">v2.4.0-STABLE</span>
+</div>
+</footer>
+</body></html>

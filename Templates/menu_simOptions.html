@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Tactical Observer | Simulation Parameters</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#fd4e4d",
+                        "on-secondary": "#005a3c",
+                        "on-tertiary": "#490005",
+                        "on-tertiary-fixed": "#3a0003",
+                        "surface-container-low": "#091328",
+                        "on-background": "#dee5ff",
+                        "primary-container": "#7b9cff",
+                        "on-primary-fixed": "#000000",
+                        "on-secondary-container": "#e1ffec",
+                        "on-error": "#490006",
+                        "primary-dim": "#316bf3",
+                        "surface-bright": "#1f2b49",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "inverse-on-surface": "#4d556b",
+                        "secondary-dim": "#58e7ab",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "secondary-container": "#006c49",
+                        "on-tertiary-container": "#1f0001",
+                        "secondary": "#69f6b8",
+                        "surface-dim": "#060e20",
+                        "on-secondary-fixed": "#00452d",
+                        "surface": "#060e20",
+                        "error-container": "#9f0519",
+                        "secondary-fixed": "#69f6b8",
+                        "tertiary-fixed": "#ff928b",
+                        "surface-container": "#0f1930",
+                        "primary-fixed-dim": "#658eff",
+                        "inverse-primary": "#0053dc",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-lowest": "#000000",
+                        "on-primary-container": "#001e5a",
+                        "tertiary": "#ff716a",
+                        "primary-fixed": "#7b9cff",
+                        "outline-variant": "#40485d",
+                        "on-error-container": "#ffa8a3",
+                        "surface-container-high": "#141f38",
+                        "error": "#ff716c",
+                        "tertiary-dim": "#ff716a",
+                        "on-surface-variant": "#a3aac4",
+                        "surface-container-highest": "#192540",
+                        "outline": "#6d758c",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "surface-variant": "#192540",
+                        "background": "#060e20",
+                        "primary": "#90abff",
+                        "on-primary": "#002873",
+                        "on-surface": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-tint": "#90abff",
+                        "on-secondary-fixed-variant": "#006544",
+                        "error-dim": "#d7383b"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            height: 4px;
+            background: #192540;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: currentColor;
+            cursor: pointer;
+            margin-top: -6px;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary min-h-screen overflow-hidden">
+<!-- Top Navigation Bar -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#060e20] dark:bg-[#060e20] font-['Space_Grotesk'] tracking-tight">
+<div class="text-xl font-bold tracking-tighter text-[#90abff]">Tactical Observer</div>
+<nav class="hidden md:flex items-center space-x-8 text-sm font-medium">
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 px-2 py-1 transition-all duration-200" href="#">Dashboard</a>
+<a class="text-[#90abff] border-b-2 border-[#90abff] pb-1" href="#">Simulations</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 px-2 py-1 transition-all duration-200" href="#">Analytics</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 px-2 py-1 transition-all duration-200" href="#">Defense</a>
+</nav>
+<div class="flex items-center space-x-4">
+<button class="material-symbols-outlined text-[#dee5ff]/60 hover:text-[#90abff]">dark_mode</button>
+<button class="material-symbols-outlined text-[#dee5ff]/60 hover:text-[#90abff]">notifications</button>
+<button class="material-symbols-outlined text-[#dee5ff]/60 hover:text-[#90abff]">settings</button>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-outline-variant">
+<img class="w-full h-full object-cover" data-alt="Researcher Profile Avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2MQkCBQp6ALl8z5V_xzeAcqy8PXcm1Oljn-LyeLU2Iek2oGoZ0hzVFKj91tzq5PiDFm41NGShFuxwVUz5YIiX4tn7eLY3ywv8HMNUk4RPgNPOs5coajkWO3rh5O2xvZ9yIT_g85Wduj_Jdh8p_REUDuPgh2BzzUuTsDUDYeINDziQ6TpJXx7Exan2OwmfoVuJ32J13dhQp15Ed4ogsZ_1Z-FVTyVpLn1PQqo2BIY8GGR40r0wSJgNzH1WeePqGENgIGWqXP0USCY"/>
+</div>
+</div>
+</header>
+<!-- Sidebar (Visible Backdrop) -->
+<aside class="fixed left-0 top-16 bottom-0 flex flex-col pt-4 bg-[#060e20] dark:bg-[#060e20] w-64 font-['Inter'] text-sm font-medium z-10 border-r border-outline-variant/10">
+<div class="px-6 mb-8">
+<div class="text-lg font-bold text-[#dee5ff]">Federated Core</div>
+<div class="text-xs text-[#dee5ff]/40">v2.4.0-stable</div>
+</div>
+<div class="space-y-1 px-3">
+<div class="flex items-center space-x-3 px-3 py-2 text-[#dee5ff]/50 hover:bg-[#dee5ff]/5 hover:text-[#dee5ff] rounded transition-colors duration-150">
+<span class="material-symbols-outlined">folder_open</span>
+<span>Projects</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2 text-[#dee5ff]/50 hover:bg-[#dee5ff]/5 hover:text-[#dee5ff] rounded transition-colors duration-150">
+<span class="material-symbols-outlined">database</span>
+<span>Datasets</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2 bg-[#90abff]/10 text-[#90abff] border-r-4 border-[#90abff] rounded transition-colors duration-150">
+<span class="material-symbols-outlined">app_registration</span>
+<span>Simulations</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2 text-[#dee5ff]/50 hover:bg-[#dee5ff]/5 hover:text-[#dee5ff] rounded transition-colors duration-150">
+<span class="material-symbols-outlined">security</span>
+<span>Security</span>
+</div>
+<div class="flex items-center space-x-3 px-3 py-2 text-[#dee5ff]/50 hover:bg-[#dee5ff]/5 hover:text-[#dee5ff] rounded transition-colors duration-150">
+<span class="material-symbols-outlined">terminal</span>
+<span>Logs</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Underlay -->
+<main class="ml-64 pt-16 p-8 grid grid-cols-12 gap-6 opacity-40 grayscale-[0.5] pointer-events-none">
+<div class="col-span-12 h-64 bg-surface-container rounded-xl"></div>
+<div class="col-span-4 h-48 bg-surface-container rounded-xl"></div>
+<div class="col-span-8 h-48 bg-surface-container rounded-xl"></div>
+<div class="col-span-6 h-64 bg-surface-container rounded-xl"></div>
+<div class="col-span-6 h-64 bg-surface-container rounded-xl"></div>
+</main>
+<!-- Simulation Options Modal Overlay -->
+<div class="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 bg-surface-container-lowest/80 backdrop-blur-xl">
+<div class="w-full max-w-5xl bg-surface-container-high rounded-xl shadow-2xl flex flex-col max-h-[921px] overflow-hidden border border-outline-variant/20">
+<!-- Modal Header -->
+<div class="px-8 py-6 border-b border-outline-variant/10 flex justify-between items-center">
+<div>
+<h2 class="font-headline text-2xl font-bold text-on-surface tracking-tight">Configuration: Simulation Node Alpha</h2>
+<p class="text-sm text-on-surface-variant font-mono">InstanceID: fl-sim-09x22-pos</p>
+</div>
+<button class="material-symbols-outlined text-on-surface-variant hover:text-on-surface transition-colors">close</button>
+</div>
+<!-- Modal Body -->
+<div class="flex-1 overflow-y-auto p-8 custom-scrollbar">
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Section 1: Federated Learning Settings -->
+<section class="space-y-6">
+<div class="flex items-center space-x-2 text-primary">
+<span class="material-symbols-outlined">hub</span>
+<h3 class="font-headline font-bold uppercase tracking-wider text-sm">Federated Learning Shell</h3>
+</div>
+<div class="bg-surface-container-low p-5 rounded-xl border-l-4 border-primary space-y-6">
+<div class="space-y-3">
+<label class="flex justify-between text-xs font-mono uppercase text-on-surface-variant">
+<span>Total Clients (N)</span>
+<span class="text-primary">128</span>
+</label>
+<input class="w-full text-primary" max="500" min="10" type="range" value="128"/>
+</div>
+<div class="space-y-3">
+<label class="flex justify-between text-xs font-mono uppercase text-on-surface-variant">
+<span>Malicious Nodes (M)</span>
+<span class="text-primary">12</span>
+</label>
+<input class="w-full text-primary" max="50" min="0" type="range" value="12"/>
+</div>
+<div class="grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Total Rounds</label>
+<input class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-on-surface focus:ring-1 focus:ring-primary" type="number" value="100"/>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Poisoned Rounds</label>
+<input class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-on-surface focus:ring-1 focus:ring-primary" type="number" value="25"/>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">NN Architecture</label>
+<select class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-on-surface focus:ring-1 focus:ring-primary">
+<option>ResNet18</option>
+<option>VGG16</option>
+<option>MobileNetV2</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Distribution Strategy</label>
+<select class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-on-surface focus:ring-1 focus:ring-primary">
+<option>First</option>
+<option>Last</option>
+<option>Alternate</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Section 2: Data Poisoning Attack Parameters -->
+<section class="space-y-6">
+<div class="flex items-center space-x-2 text-tertiary">
+<span class="material-symbols-outlined">security_update_warning</span>
+<h3 class="font-headline font-bold uppercase tracking-wider text-sm">Adversarial Parameters</h3>
+</div>
+<div class="bg-surface-container-low p-5 rounded-xl border border-tertiary/30 space-y-5">
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Attack Vector</label>
+<select class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-tertiary focus:ring-1 focus:ring-tertiary">
+<option>Label Flip</option>
+<option selected="">BadNets</option>
+<option>Blended</option>
+<option>SIG</option>
+<option>Trojan</option>
+<option>Semantic</option>
+<option>Edge-case</option>
+</select>
+</div>
+<div class="space-y-3">
+<label class="flex justify-between text-xs font-mono uppercase text-on-surface-variant">
+<span>Attack Intensity</span>
+<span class="text-tertiary">0.75</span>
+</label>
+<input class="w-full text-tertiary" max="1.0" min="0.01" step="0.01" type="range" value="0.75"/>
+</div>
+<div class="space-y-3">
+<label class="flex justify-between text-xs font-mono uppercase text-on-surface-variant">
+<span>Data Corruption %</span>
+<span class="text-tertiary">15%</span>
+</label>
+<input class="w-full text-tertiary" max="100" min="1" type="range" value="15"/>
+</div>
+<!-- Dynamic Sub-params (Grid Layout) -->
+<div class="pt-4 border-t border-outline-variant/10 grid grid-cols-2 gap-4">
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Trigger Type</label>
+<div class="flex space-x-2">
+<button class="flex-1 bg-surface-container-highest border border-tertiary/20 py-1 text-xs rounded text-tertiary">Square</button>
+<button class="flex-1 bg-surface-container-highest py-1 text-xs rounded text-on-surface-variant">Cross</button>
+</div>
+</div>
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Pattern</label>
+<select class="w-full bg-surface-container-highest border-none rounded text-[10px] p-1 text-on-surface">
+<option>Grid</option>
+<option>Vertical</option>
+<option>Random</option>
+</select>
+</div>
+<div class="col-span-2 space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Data Modification</label>
+<div class="flex items-center space-x-4">
+<label class="flex items-center space-x-2 text-xs">
+<input checked="" class="rounded bg-surface-container-highest border-none text-tertiary focus:ring-0" type="checkbox"/>
+<span>Green Tint</span>
+</label>
+<label class="flex items-center space-x-2 text-xs">
+<input class="rounded bg-surface-container-highest border-none text-tertiary focus:ring-0" type="checkbox"/>
+<span>Sepia Shift</span>
+</label>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Section 3: Data Poisoning Protection -->
+<section class="space-y-6">
+<div class="flex items-center space-x-2 text-secondary">
+<span class="material-symbols-outlined">admin_panel_settings</span>
+<h3 class="font-headline font-bold uppercase tracking-wider text-sm">Sanitization &amp; Defense</h3>
+</div>
+<div class="bg-surface-container-low p-5 rounded-xl border border-secondary/30 space-y-6">
+<div class="space-y-2">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant">Aggregation Protocol</label>
+<select class="w-full bg-surface-container-highest border-none rounded text-sm p-2 text-secondary focus:ring-1 focus:ring-secondary">
+<option>FedAvg</option>
+<option selected="">Krum</option>
+<option>Trimmed Mean</option>
+<option>Median</option>
+<option>FoolsGold</option>
+<option>Norm Clipping</option>
+</select>
+</div>
+<div class="space-y-3">
+<label class="flex justify-between text-xs font-mono uppercase text-on-surface-variant">
+<span>Defense Sensitivity</span>
+<span class="text-secondary">High (0.82)</span>
+</label>
+<input class="w-full text-secondary" max="1" min="0" step="0.01" type="range" value="0.82"/>
+</div>
+<div class="p-4 bg-secondary/5 border border-secondary/10 rounded-lg">
+<div class="flex items-start space-x-3">
+<span class="material-symbols-outlined text-secondary text-lg">info</span>
+<p class="text-[11px] leading-relaxed text-secondary/80 font-medium">
+                                        Selected aggregation (Krum) will automatically isolate nodes whose weight updates deviate significantly from the geometric median.
+                                    </p>
+</div>
+</div>
+</div>
+<!-- Mini Preview Window -->
+<div class="bg-black/40 rounded-xl p-4 border border-outline-variant/10">
+<label class="text-[10px] font-mono uppercase text-on-surface-variant mb-2 block">System Status Preview</label>
+<div class="h-16 flex items-end space-x-1">
+<div class="flex-1 bg-secondary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-secondary/20 h-2/3 rounded-t-sm"></div>
+<div class="flex-1 bg-tertiary/40 h-full rounded-t-sm animate-pulse"></div>
+<div class="flex-1 bg-secondary/20 h-3/4 rounded-t-sm"></div>
+<div class="flex-1 bg-secondary/20 h-1/2 rounded-t-sm"></div>
+<div class="flex-1 bg-secondary/20 h-2/3 rounded-t-sm"></div>
+</div>
+</div>
+</section>
+</div>
+</div>
+<!-- Modal Footer -->
+<div class="px-8 py-6 border-t border-outline-variant/10 bg-surface-container-highest flex justify-end items-center space-x-4">
+<button class="px-6 py-2.5 text-sm font-bold text-on-surface-variant hover:text-on-surface transition-colors duration-200">
+                    Cancel
+                </button>
+<button class="px-8 py-2.5 text-sm font-bold bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-xl hover:shadow-[0_0_20px_rgba(144,171,255,0.4)] transition-all duration-300 flex items-center space-x-2">
+<span class="material-symbols-outlined text-sm">play_arrow</span>
+<span>Run Simulation</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Background Elements -->
+<div class="fixed top-0 left-0 w-full h-full pointer-events-none z-0 overflow-hidden opacity-20">
+<div class="absolute top-[-10%] right-[-10%] w-[600px] h-[600px] bg-primary rounded-full blur-[120px] opacity-20"></div>
+<div class="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-tertiary rounded-full blur-[100px] opacity-10"></div>
+</div>
+</body></html>

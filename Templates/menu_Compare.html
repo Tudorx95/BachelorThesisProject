@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Compare Simulations | Tactical Observer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "tertiary-container": "#fd4e4d",
+                        "on-secondary": "#005a3c",
+                        "on-tertiary": "#490005",
+                        "on-tertiary-fixed": "#3a0003",
+                        "surface-container-low": "#091328",
+                        "on-background": "#dee5ff",
+                        "primary-container": "#7b9cff",
+                        "on-primary-fixed": "#000000",
+                        "on-secondary-container": "#e1ffec",
+                        "on-error": "#490006",
+                        "primary-dim": "#316bf3",
+                        "surface-bright": "#1f2b49",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "inverse-on-surface": "#4d556b",
+                        "secondary-dim": "#58e7ab",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "secondary-container": "#006c49",
+                        "on-tertiary-container": "#1f0001",
+                        "secondary": "#69f6b8",
+                        "surface-dim": "#060e20",
+                        "on-secondary-fixed": "#00452d",
+                        "surface": "#060e20",
+                        "error-container": "#9f0519",
+                        "secondary-fixed": "#69f6b8",
+                        "tertiary-fixed": "#ff928b",
+                        "surface-container": "#0f1930",
+                        "primary-fixed-dim": "#658eff",
+                        "inverse-primary": "#0053dc",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-lowest": "#000000",
+                        "on-primary-container": "#001e5a",
+                        "tertiary": "#ff716a",
+                        "primary-fixed": "#7b9cff",
+                        "outline-variant": "#40485d",
+                        "on-error-container": "#ffa8a3",
+                        "surface-container-high": "#141f38",
+                        "error": "#ff716c",
+                        "tertiary-dim": "#ff716a",
+                        "on-surface-variant": "#a3aac4",
+                        "surface-container-highest": "#192540",
+                        "outline": "#6d758c",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "surface-variant": "#192540",
+                        "background": "#060e20",
+                        "primary": "#90abff",
+                        "on-primary": "#002873",
+                        "on-surface": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-tint": "#90abff",
+                        "on-secondary-fixed-variant": "#006544",
+                        "error-dim": "#d7383b"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #060e20;
+            color: #dee5ff;
+        }
+        .space-grotesk { font-family: 'Space Grotesk', sans-serif; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        /* Custom scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #060e20; }
+        ::-webkit-scrollbar-thumb { background: #192540; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #90abff; }
+    </style>
+</head>
+<body class="bg-background text-on-surface">
+<!-- TopNavBar Implementation -->
+<header class="flex justify-between items-center w-full px-6 h-16 fixed top-0 z-50 bg-[#060e20] dark:bg-[#060e20] font-['Space_Grotesk'] tracking-tight">
+<div class="flex items-center gap-8">
+<div class="text-xl font-bold tracking-tighter text-[#90abff]">Tactical Observer</div>
+<nav class="hidden md:flex gap-6">
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]" href="#">Dashboard</a>
+<a class="text-[#90abff] border-b-2 border-[#90abff] pb-1 transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]" href="#">Simulations</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]" href="#">Analytics</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] hover:bg-[#dee5ff]/5 transition-all duration-200 ease-[cubic-bezier(0.2,0,0,1)]" href="#">Defense</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden lg:flex items-center bg-[#1a2333] px-3 py-1.5 rounded-lg">
+<span class="material-symbols-outlined text-sm opacity-50 mr-2">search</span>
+<input class="bg-transparent border-none focus:ring-0 text-sm w-48 text-[#dee5ff]" placeholder="Search simulations..." type="text"/>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-2 hover:bg-[#dee5ff]/5 rounded-lg text-[#90abff] transition-all"><span class="material-symbols-outlined">dark_mode</span></button>
+<button class="p-2 hover:bg-[#dee5ff]/5 rounded-lg text-[#90abff] transition-all"><span class="material-symbols-outlined">notifications</span></button>
+<button class="p-2 hover:bg-[#dee5ff]/5 rounded-lg text-[#90abff] transition-all"><span class="material-symbols-outlined">settings</span></button>
+<div class="w-8 h-8 rounded-full bg-surface-container-highest ml-2 overflow-hidden border border-outline-variant">
+<img alt="Researcher Profile" class="w-full h-full object-cover" data-alt="Close-up portrait of a technical researcher" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBcnFXPLL_X8ghGgiHNkPg-c0ILmufMu2_PYWA7EwT2-JAAGYCHddR-1WujyC41-msIcVyoUJBv6nMo9jI0p1YbBzVgp69GNLY4r-rMRQb7GJ38VHhjL6sOPxI8Xp9IYsoL1LY_s7ChQvWCwQq6AZovEWi4-y4oKe9YNrk_buJfbGunDoUFAg88H6rKiRaRkXi484yTTN62dM3FeiKfZGTqTAOvx3YE1h9VEPGcru_zMmaxh5h7YTyyrGOqtAPwKlxNA9uRk8il35g"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="pt-24 pb-12 px-6 max-w-[1600px] mx-auto min-h-screen">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
+<div>
+<h1 class="text-4xl font-bold font-headline tracking-tight mb-2">Simulation <span class="text-primary">Differential</span></h1>
+<p class="text-on-surface-variant max-w-2xl font-body">Compare architectural robustness and poisoning resilience across historical nodes. Use the selectors below to analyze deviation vectors.</p>
+</div>
+<button class="flex items-center gap-2 bg-gradient-to-br from-primary to-primary-container text-on-primary font-semibold px-6 py-3 rounded-xl transition-all active:scale-95 shadow-lg shadow-primary/10">
+<span class="material-symbols-outlined">picture_as_pdf</span>
+<span>Export Comparison PDF</span>
+</button>
+</div>
+<!-- Simulation Selectors -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-primary">
+<label class="block text-xs font-bold uppercase tracking-widest text-primary mb-3">Target A: Baseline</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none focus:ring-2 focus:ring-primary rounded-lg py-4 px-4 text-on-surface appearance-none font-medium">
+<option>SIM-7742: Fed-Avg-Standard_v2.4</option>
+<option>SIM-7741: Poison-Heavy_ResNet50</option>
+<option>SIM-7739: Sybil-Attack_Mondrian</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 pointer-events-none">expand_more</span>
+</div>
+<div class="mt-4 flex items-center gap-4 text-xs font-mono text-on-surface-variant">
+<span>ID: 0xFD42..</span>
+<span>TYPE: FED-AVG</span>
+<span>NODES: 124</span>
+<span class="text-secondary">STATUS: COMPLETED</span>
+</div>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border-l-4 border-tertiary">
+<label class="block text-xs font-bold uppercase tracking-widest text-tertiary mb-3">Target B: Experimental</label>
+<div class="relative">
+<select class="w-full bg-surface-container-highest border-none focus:ring-2 focus:ring-tertiary rounded-lg py-4 px-4 text-on-surface appearance-none font-medium">
+<option>SIM-7745: Robust-Krum_Defense_v1.2</option>
+<option>SIM-7744: Gradient-Clipping_Test</option>
+<option>SIM-7740: Random-Noise_Baseline</option>
+</select>
+<span class="material-symbols-outlined absolute right-4 top-4 pointer-events-none">expand_more</span>
+</div>
+<div class="mt-4 flex items-center gap-4 text-xs font-mono text-on-surface-variant">
+<span>ID: 0xAB89..</span>
+<span>TYPE: KRUM-ROBUST</span>
+<span>NODES: 124</span>
+<span class="text-tertiary">STATUS: COMPLETED</span>
+</div>
+</div>
+</div>
+<!-- Metric Comparison Bento Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-4 mb-8">
+<!-- Metric Card: Initial -->
+<div class="bg-surface-container p-6 rounded-xl flex flex-col justify-between">
+<span class="text-xs font-bold text-on-surface-variant/70 uppercase">Initial Accuracy</span>
+<div class="flex items-end justify-between mt-4">
+<div class="flex flex-col">
+<span class="text-3xl font-bold font-headline">94.2%</span>
+<span class="text-xs font-mono text-primary">Target A</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold font-headline opacity-60">94.1%</span>
+<span class="text-xs font-mono text-tertiary">Target B</span>
+</div>
+</div>
+</div>
+<!-- Metric Card: Clean -->
+<div class="bg-surface-container p-6 rounded-xl flex flex-col justify-between">
+<span class="text-xs font-bold text-on-surface-variant/70 uppercase">Clean Accuracy</span>
+<div class="flex items-end justify-between mt-4">
+<div class="flex flex-col">
+<span class="text-3xl font-bold font-headline">92.8%</span>
+<span class="text-xs font-mono text-primary">Target A</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold font-headline opacity-60">91.4%</span>
+<span class="text-xs font-mono text-tertiary">Target B</span>
+</div>
+</div>
+</div>
+<!-- Metric Card: Poisoned -->
+<div class="bg-surface-container-high p-6 rounded-xl flex flex-col justify-between ring-1 ring-tertiary/20">
+<span class="text-xs font-bold text-tertiary uppercase">Poisoned Accuracy</span>
+<div class="flex items-end justify-between mt-4">
+<div class="flex flex-col">
+<span class="text-3xl font-bold font-headline text-tertiary">41.2%</span>
+<span class="text-xs font-mono text-primary opacity-50">Target A</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold font-headline text-tertiary-fixed">68.9%</span>
+<span class="text-xs font-mono text-tertiary opacity-50">Target B</span>
+</div>
+</div>
+</div>
+<!-- Metric Card: Protected -->
+<div class="bg-surface-container-high p-6 rounded-xl flex flex-col justify-between ring-1 ring-secondary/20">
+<span class="text-xs font-bold text-secondary uppercase">Protected Accuracy</span>
+<div class="flex items-end justify-between mt-4">
+<div class="flex flex-col">
+<span class="text-3xl font-bold font-headline text-secondary">88.5%</span>
+<span class="text-xs font-mono text-primary opacity-50">Target A</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold font-headline text-secondary-fixed-dim">90.2%</span>
+<span class="text-xs font-mono text-tertiary opacity-50">Target B</span>
+</div>
+</div>
+</div>
+<!-- Metric Card: Drop -->
+<div class="bg-surface-container p-6 rounded-xl flex flex-col justify-between">
+<span class="text-xs font-bold text-on-surface-variant/70 uppercase">Accuracy Drop</span>
+<div class="flex items-end justify-between mt-4">
+<div class="flex flex-col">
+<span class="text-3xl font-bold font-headline text-error">-53.0%</span>
+<span class="text-xs font-mono text-primary opacity-50">Target A</span>
+</div>
+<div class="flex flex-col items-end">
+<span class="text-2xl font-bold font-headline text-secondary-dim">-22.5%</span>
+<span class="text-xs font-mono text-tertiary opacity-50">Target B</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Comparative Charts & Summary -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Visual Chart Comparison -->
+<div class="lg:col-span-2 bg-surface-container p-8 rounded-xl relative overflow-hidden min-h-[400px]">
+<div class="flex items-center justify-between mb-8">
+<h3 class="font-headline font-bold text-lg flex items-center gap-2">
+<span class="material-symbols-outlined text-primary">timeline</span>
+                        Accuracy Convergence over Training Rounds
+                    </h3>
+<div class="flex items-center gap-4 text-xs font-mono">
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-primary"></span>
+<span>Target A</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="w-3 h-3 rounded-full bg-tertiary"></span>
+<span>Target B</span>
+</div>
+</div>
+</div>
+<!-- Mock Chart Visual -->
+<div class="relative w-full h-64 mt-12">
+<!-- Grid Lines -->
+<div class="absolute inset-0 flex flex-col justify-between opacity-10">
+<div class="w-full h-[1px] bg-outline"></div>
+<div class="w-full h-[1px] bg-outline"></div>
+<div class="w-full h-[1px] bg-outline"></div>
+<div class="w-full h-[1px] bg-outline"></div>
+<div class="w-full h-[1px] bg-outline"></div>
+</div>
+<!-- SVG Chart -->
+<svg class="absolute inset-0 w-full h-full overflow-visible" viewbox="0 0 1000 256">
+<!-- Simulation A Path (Blue) -->
+<path class="opacity-80" d="M0,20 L100,25 L200,18 L300,100 L400,180 L500,220 L600,230 L700,235 L800,230 L900,225 L1000,228" fill="none" stroke="#90abff" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Simulation B Path (Red) -->
+<path d="M0,22 L100,28 L200,24 L300,40 L400,70 L500,85 L600,90 L700,88 L800,82 L900,80 L1000,85" fill="none" stroke="#ff716a" stroke-linecap="round" stroke-linejoin="round" stroke-width="3"></path>
+<!-- Data Points -->
+<circle cx="300" cy="100" fill="#90abff" r="4"></circle>
+<circle cx="300" cy="40" fill="#ff716a" r="4"></circle>
+<!-- Poison Indicator -->
+<line opacity="0.4" stroke="#ff716a" stroke-dasharray="4,4" x1="300" x2="300" y1="0" y2="256"></line>
+</svg>
+<div class="absolute top-0 left-[310px] bg-surface-container-highest p-2 rounded border border-outline-variant text-[10px] font-mono">
+<span class="text-tertiary font-bold">ATTACK TRIGGERED</span><br/>
+                        Round 30 Injection
+                    </div>
+</div>
+<div class="flex justify-between mt-6 text-[10px] font-mono text-on-surface-variant opacity-60">
+<span>Round 0</span>
+<span>Round 25</span>
+<span>Round 50</span>
+<span>Round 75</span>
+<span>Round 100</span>
+</div>
+</div>
+<!-- Summary Panel -->
+<div class="bg-surface-container-low p-8 rounded-xl border border-outline-variant/30 flex flex-col">
+<h3 class="font-headline font-bold text-lg mb-6 flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary">psychology</span>
+                    Differential Summary
+                </h3>
+<div class="space-y-6 flex-grow">
+<div class="space-y-2">
+<h4 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Core Divergence</h4>
+<p class="text-sm leading-relaxed text-on-surface/80">
+                            Target B shows <span class="text-secondary font-bold">+27.7% higher resilience</span> under active poisoning conditions compared to Target A. While initial convergence was slower, the <span class="italic">Robust-Krum</span> aggregator successfully identified and discarded 92% of malicious updates.
+                        </p>
+</div>
+<div class="space-y-2">
+<h4 class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">Vulnerability Notes</h4>
+<p class="text-sm leading-relaxed text-on-surface/80">
+                            Target A suffered a <span class="text-error">catastrophic collapse</span> at round 30. The standard Fed-Avg mechanism proved incapable of mitigating Sybil-based label flipping.
+                        </p>
+</div>
+<div class="p-4 bg-surface-container-highest rounded-lg">
+<div class="flex items-center gap-3 mb-2">
+<span class="material-symbols-outlined text-primary" style="font-variation-settings: 'FILL' 1;">verified</span>
+<span class="text-xs font-bold">Recommendation</span>
+</div>
+<p class="text-xs text-on-surface-variant leading-relaxed">
+                            Deploy Target B configuration for production environments prone to untrusted node participation. Consideration should be given to the 1.4% accuracy trade-off in clean scenarios.
+                        </p>
+</div>
+</div>
+<div class="mt-8 pt-6 border-t border-outline-variant/30 flex items-center justify-between">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full bg-secondary-container flex items-center justify-center text-[10px] font-bold ring-2 ring-surface">AI</div>
+<div class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[10px] font-bold ring-2 ring-surface">DB</div>
+</div>
+<span class="text-[10px] font-mono opacity-50 uppercase">Analysis Generated by Core Engine</span>
+</div>
+</div>
+</div>
+<!-- Node Comparison Table -->
+<div class="mt-12 bg-surface-container rounded-xl overflow-hidden">
+<div class="px-8 py-6 flex items-center justify-between">
+<h3 class="font-headline font-bold text-lg">Detailed Node Variance</h3>
+<span class="text-xs font-mono bg-surface-container-high px-2 py-1 rounded">Displaying 124 Comparative Nodes</span>
+</div>
+<div class="overflow-x-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-high text-xs font-bold uppercase tracking-tighter text-on-surface-variant">
+<th class="px-8 py-4">Node ID</th>
+<th class="px-4 py-4">Dataset Segment</th>
+<th class="px-4 py-4">A: Local Acc</th>
+<th class="px-4 py-4">B: Local Acc</th>
+<th class="px-4 py-4">Delta</th>
+<th class="px-8 py-4 text-right">Trust Score</th>
+</tr>
+</thead>
+<tbody class="text-sm font-medium">
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="px-8 py-4 font-mono">Node-X_882</td>
+<td class="px-4 py-4">Medical_Imaging_Primary</td>
+<td class="px-4 py-4">91.2%</td>
+<td class="px-4 py-4">90.8%</td>
+<td class="px-4 py-4 text-tertiary">-0.4%</td>
+<td class="px-8 py-4 text-right"><span class="px-2 py-1 bg-secondary/10 text-secondary rounded-full text-[10px]">99.8%</span></td>
+</tr>
+<tr class="bg-surface-container-low hover:bg-surface-bright transition-colors">
+<td class="px-8 py-4 font-mono text-tertiary">Node-X_914 (Malicious)</td>
+<td class="px-4 py-4">Edge_Case_Outliers</td>
+<td class="px-4 py-4 text-error">22.4%</td>
+<td class="px-4 py-4 text-secondary">78.1%</td>
+<td class="px-4 py-4 text-secondary font-bold">+55.7%</td>
+<td class="px-8 py-4 text-right"><span class="px-2 py-1 bg-tertiary/10 text-tertiary rounded-full text-[10px]">04.2%</span></td>
+</tr>
+<tr class="hover:bg-surface-bright transition-colors">
+<td class="px-8 py-4 font-mono">Node-X_102</td>
+<td class="px-4 py-4">Historical_Baseline</td>
+<td class="px-4 py-4">94.5%</td>
+<td class="px-4 py-4">94.2%</td>
+<td class="px-4 py-4 text-on-surface-variant">-0.3%</td>
+<td class="px-8 py-4 text-right"><span class="px-2 py-1 bg-secondary/10 text-secondary rounded-full text-[10px]">98.1%</span></td>
+</tr>
+<tr class="bg-surface-container-low hover:bg-surface-bright transition-colors">
+<td class="px-8 py-4 font-mono">Node-X_245</td>
+<td class="px-4 py-4">Synthetic_Augmented</td>
+<td class="px-4 py-4">88.9%</td>
+<td class="px-4 py-4">89.1%</td>
+<td class="px-4 py-4 text-secondary">+0.2%</td>
+<td class="px-8 py-4 text-right"><span class="px-2 py-1 bg-secondary/10 text-secondary rounded-full text-[10px]">95.5%</span></td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="px-8 py-4 bg-surface-container-low text-xs text-center text-on-surface-variant font-mono">
+                [ PAGE 1 OF 31 ] • CLICK ROW FOR DETECTED GRADIENT MAPPING
+            </div>
+</div>
+</main>
+<!-- SideNavBar (Suppressed for focused comparison view as per guidelines, but TopNavBar is present) -->
+<!-- Global Layout Fix for Padding/Sizing -->
+<style>
+        @media (max-width: 768px) {
+            main { padding-top: 5rem; }
+        }
+    </style>
+</body></html>

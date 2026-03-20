@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error": "#ff716c",
+                        "surface-container-lowest": "#000000",
+                        "surface-dim": "#060e20",
+                        "surface-tint": "#90abff",
+                        "on-primary-container": "#001e5a",
+                        "outline-variant": "#40485d",
+                        "secondary": "#69f6b8",
+                        "on-tertiary-fixed": "#3a0003",
+                        "on-primary-fixed": "#000000",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-low": "#091328",
+                        "on-secondary-container": "#e1ffec",
+                        "primary-container": "#7b9cff",
+                        "background": "#060e20",
+                        "primary-fixed-dim": "#658eff",
+                        "primary-dim": "#316bf3",
+                        "secondary-fixed": "#69f6b8",
+                        "on-primary": "#002873",
+                        "inverse-on-surface": "#4d556b",
+                        "tertiary-dim": "#ff716a",
+                        "on-tertiary-container": "#1f0001",
+                        "tertiary-container": "#fd4e4d",
+                        "surface-variant": "#192540",
+                        "on-secondary": "#005a3c",
+                        "error-dim": "#d7383b",
+                        "tertiary": "#ff716a",
+                        "surface-container": "#0f1930",
+                        "on-secondary-fixed-variant": "#006544",
+                        "secondary-container": "#006c49",
+                        "secondary-dim": "#58e7ab",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "on-error-container": "#ffa8a3",
+                        "primary": "#90abff",
+                        "on-secondary-fixed": "#00452d",
+                        "surface-container-high": "#141f38",
+                        "tertiary-fixed": "#ff928b",
+                        "inverse-primary": "#0053dc",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "on-surface": "#dee5ff",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "on-tertiary": "#490005",
+                        "outline": "#6d758c",
+                        "on-surface-variant": "#a3aac4",
+                        "on-error": "#490006",
+                        "error-container": "#9f0519",
+                        "surface-bright": "#1f2b49",
+                        "primary-fixed": "#7b9cff",
+                        "on-background": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container-highest": "#192540",
+                        "surface": "#060e20"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    },
+                    borderRadius: {"DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem"},
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body {
+            background-color: #060e20;
+            color: #dee5ff;
+            font-family: 'Inter', sans-serif;
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            background: #192540;
+            height: 4px;
+            border-radius: 2px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #90abff;
+            cursor: pointer;
+            margin-top: -6px;
+            border: 2px solid #060e20;
+        }
+        .attack-slider::-webkit-slider-thumb {
+            background: #ff716a !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center overflow-hidden bg-background">
+<!-- Background Decoration -->
+<div class="fixed inset-0 pointer-events-none opacity-20 overflow-hidden">
+<div class="absolute -top-1/4 -left-1/4 w-1/2 h-1/2 bg-primary blur-[160px] rounded-full"></div>
+<div class="absolute -bottom-1/4 -right-1/4 w-1/2 h-1/2 bg-tertiary blur-[160px] rounded-full opacity-40"></div>
+</div>
+<!-- Main Modal Overlay -->
+<div class="relative z-10 w-full max-w-4xl p-6 md:p-12 animate-in fade-in zoom-in duration-300">
+<!-- Modal Container -->
+<div class="bg-surface-container/70 backdrop-blur-xl rounded-xl shadow-2xl overflow-hidden ring-1 ring-white/10 flex flex-col md:flex-row min-h-[600px]">
+<!-- Left Side: Navigation/Context -->
+<div class="w-full md:w-64 bg-surface-container-low p-8 flex flex-col justify-between border-r border-outline-variant/15">
+<div>
+<div class="mb-12">
+<h2 class="font-headline font-black text-2xl text-on-surface tracking-tighter leading-none">PROJECT ALPHA</h2>
+<span class="font-label text-[10px] uppercase tracking-[0.2em] text-primary font-bold">Federated Simulation</span>
+</div>
+<nav class="space-y-6">
+<div class="flex items-center gap-3 text-secondary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">settings_suggest</span>
+<span class="font-headline text-sm font-bold uppercase tracking-widest">Configuration</span>
+</div>
+<div class="flex items-center gap-3 text-on-surface/40">
+<span class="material-symbols-outlined text-sm">hub</span>
+<span class="font-headline text-sm font-bold uppercase tracking-widest">Network Map</span>
+</div>
+<div class="flex items-center gap-3 text-on-surface/40">
+<span class="material-symbols-outlined text-sm">security</span>
+<span class="font-headline text-sm font-bold uppercase tracking-widest">Defense Logic</span>
+</div>
+</nav>
+</div>
+<div class="bg-surface-container-lowest/40 p-4 rounded-lg">
+<div class="flex items-center justify-between mb-2">
+<span class="text-[10px] font-bold text-on-surface/50 uppercase">System Integrity</span>
+<span class="text-[10px] font-bold text-secondary uppercase">99.8%</span>
+</div>
+<div class="w-full bg-surface-variant h-1 rounded-full overflow-hidden">
+<div class="bg-secondary h-full w-[99.8%]"></div>
+</div>
+</div>
+</div>
+<!-- Right Side: Form Content -->
+<div class="flex-1 p-8 md:p-10 overflow-y-auto custom-scrollbar">
+<header class="mb-10 flex justify-between items-start">
+<div>
+<h1 class="font-headline text-3xl font-bold text-on-surface tracking-tight">Deploy Simulation</h1>
+<p class="text-on-surface-variant font-body text-sm mt-1">Configure federated learning parameters for tactical observation.</p>
+</div>
+<button class="text-on-surface/60 hover:text-on-surface transition-colors p-2">
+<span class="material-symbols-outlined">close</span>
+</button>
+</header>
+<form class="space-y-10">
+<!-- Global Network Configuration -->
+<section>
+<div class="flex items-center gap-2 mb-6">
+<span class="w-1.5 h-1.5 bg-primary rounded-full"></span>
+<h3 class="font-headline text-xs font-black uppercase tracking-widest text-primary">Global Network</h3>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<div class="space-y-2">
+<label class="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Total Clients (N)</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-outline-variant/30 text-on-surface p-3 font-headline text-lg focus:ring-1 focus:ring-primary focus:border-primary outline-none transition-all rounded-lg" placeholder="0" type="number" value="100"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-primary-dim">NODES</span>
+</div>
+</div>
+<div class="space-y-2">
+<label class="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Malicious Clients (M)</label>
+<div class="relative">
+<input class="w-full bg-surface-container-lowest border border-tertiary/30 text-tertiary p-3 font-headline text-lg focus:ring-1 focus:ring-tertiary focus:border-tertiary outline-none transition-all rounded-lg" placeholder="0" type="number" value="15"/>
+<span class="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] font-bold text-tertiary-dim">THREATS</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Tactical Strategy -->
+<section class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<!-- Protection Section -->
+<div class="p-6 bg-secondary/5 rounded-xl border border-secondary/20 space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-secondary text-lg">shield</span>
+<h3 class="font-headline text-xs font-black uppercase tracking-widest text-secondary">Defense Layer</h3>
+</div>
+<div class="space-y-2">
+<label class="block text-[10px] font-bold uppercase tracking-wider text-secondary/70">Protection/Aggregation</label>
+<select class="w-full bg-surface-container-lowest border border-secondary/30 text-on-surface p-3 font-headline text-sm focus:ring-1 focus:ring-secondary focus:border-secondary outline-none rounded-lg appearance-none cursor-pointer">
+<option>FedAvg</option>
+<option selected="">Krum</option>
+<option>FoolsGold</option>
+</select>
+</div>
+</div>
+<!-- Poisoning Strategy -->
+<div class="p-6 bg-tertiary/5 rounded-xl border border-tertiary/20 space-y-4">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary text-lg">biotech</span>
+<h3 class="font-headline text-xs font-black uppercase tracking-widest text-tertiary">Vector Logic</h3>
+</div>
+<div class="space-y-2">
+<label class="block text-[10px] font-bold uppercase tracking-wider text-tertiary/70">Distribution Strategy</label>
+<select class="w-full bg-surface-container-lowest border border-tertiary/30 text-on-surface p-3 font-headline text-sm focus:ring-1 focus:ring-tertiary focus:border-tertiary outline-none rounded-lg appearance-none cursor-pointer">
+<option>First M</option>
+<option>Last M</option>
+<option selected="">Alternate</option>
+</select>
+</div>
+</div>
+</section>
+<!-- Attack Parameters -->
+<section class="p-6 bg-surface-container-lowest border border-outline-variant/20 rounded-xl space-y-8">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-tertiary">warning</span>
+<h3 class="font-headline text-xs font-black uppercase tracking-widest text-on-surface">Attack Parameters</h3>
+</div>
+<div class="px-2 py-1 bg-tertiary/20 border border-tertiary/30 rounded">
+<span class="text-[9px] font-black text-tertiary uppercase tracking-tighter">High Risk State</span>
+</div>
+</div>
+<div class="space-y-6">
+<div class="space-y-2">
+<label class="block text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Poisoning Method</label>
+<select class="w-full bg-surface-container border border-tertiary/30 text-tertiary p-3 font-headline text-sm focus:ring-1 focus:ring-tertiary focus:border-tertiary outline-none rounded-lg appearance-none cursor-pointer">
+<option selected="">Label Flip</option>
+<option>Backdoor (Trojan)</option>
+</select>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Intensity</label>
+<span class="font-headline text-sm font-bold text-tertiary">0.75</span>
+</div>
+<input class="w-full attack-slider" max="1.0" min="0.01" step="0.01" type="range" value="0.75"/>
+</div>
+<div class="space-y-4">
+<div class="flex justify-between items-center">
+<label class="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">Poisoning Percentage</label>
+<span class="font-headline text-sm font-bold text-tertiary">25%</span>
+</div>
+<input class="w-full attack-slider" max="100" min="0" step="1" type="range" value="25"/>
+</div>
+</div>
+</div>
+</section>
+<!-- Footer Actions -->
+<footer class="pt-6 flex flex-col md:flex-row gap-4 items-center justify-between border-t border-outline-variant/10">
+<p class="text-[10px] text-on-surface/40 uppercase tracking-widest font-medium">Estimated Runtime: <span class="text-on-surface">02:45m</span></p>
+<div class="flex gap-3 w-full md:w-auto">
+<button class="flex-1 md:flex-none px-8 py-3 bg-transparent border border-outline-variant/30 text-on-surface font-headline font-bold text-xs uppercase tracking-widest hover:bg-white/5 transition-all rounded-lg" type="button">
+                                Cancel
+                            </button>
+<button class="flex-1 md:flex-none px-8 py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary font-headline font-black text-xs uppercase tracking-[0.15em] shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all rounded-lg" type="submit">
+                                Initialize Simulation
+                            </button>
+</div>
+</footer>
+</form>
+</div>
+</div>
+<!-- Terminal Output Decorator -->
+<div class="mt-4 bg-black/80 backdrop-blur rounded-lg border border-white/5 p-3 flex items-center justify-between">
+<div class="flex items-center gap-4">
+<span class="flex gap-1">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="w-2 h-2 rounded-full bg-yellow-500"></span>
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+</span>
+<span class="font-mono text-[10px] text-secondary/60 tracking-tight">root@fed_sim:~$ waiting for configuration commit...</span>
+</div>
+<span class="font-mono text-[10px] text-on-surface/20">UUID: 8F21-00X9-Tactical</span>
+</div>
+</div>
+</body></html>

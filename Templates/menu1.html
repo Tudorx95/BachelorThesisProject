@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Federated Simulation &amp; Defense - Project Explorer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&amp;family=Inter:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "error": "#ff716c",
+                        "surface-container-lowest": "#000000",
+                        "surface-dim": "#060e20",
+                        "surface-tint": "#90abff",
+                        "on-primary-container": "#001e5a",
+                        "outline-variant": "#40485d",
+                        "secondary": "#69f6b8",
+                        "on-tertiary-fixed": "#3a0003",
+                        "on-primary-fixed": "#000000",
+                        "on-primary-fixed-variant": "#00266e",
+                        "surface-container-low": "#091328",
+                        "on-secondary-container": "#e1ffec",
+                        "primary-container": "#7b9cff",
+                        "background": "#060e20",
+                        "primary-fixed-dim": "#658eff",
+                        "primary-dim": "#316bf3",
+                        "secondary-fixed": "#69f6b8",
+                        "on-primary": "#002873",
+                        "inverse-on-surface": "#4d556b",
+                        "tertiary-dim": "#ff716a",
+                        "on-tertiary-container": "#1f0001",
+                        "tertiary-container": "#fd4e4d",
+                        "surface-variant": "#192540",
+                        "on-secondary": "#005a3c",
+                        "error-dim": "#d7383b",
+                        "tertiary": "#ff716a",
+                        "surface-container": "#0f1930",
+                        "on-secondary-fixed-variant": "#006544",
+                        "secondary-container": "#006c49",
+                        "secondary-dim": "#58e7ab",
+                        "tertiary-fixed-dim": "#ff7b74",
+                        "on-error-container": "#ffa8a3",
+                        "primary": "#90abff",
+                        "on-secondary-fixed": "#00452d",
+                        "surface-container-high": "#141f38",
+                        "tertiary-fixed": "#ff928b",
+                        "inverse-primary": "#0053dc",
+                        "secondary-fixed-dim": "#58e7ab",
+                        "on-surface": "#dee5ff",
+                        "on-tertiary-fixed-variant": "#79000e",
+                        "on-tertiary": "#490005",
+                        "outline": "#6d758c",
+                        "on-surface-variant": "#a3aac4",
+                        "on-error": "#490006",
+                        "error-container": "#9f0519",
+                        "surface-bright": "#1f2b49",
+                        "primary-fixed": "#7b9cff",
+                        "on-background": "#dee5ff",
+                        "inverse-surface": "#faf8ff",
+                        "surface-container-highest": "#192540",
+                        "surface": "#060e20"
+                    },
+                    fontFamily: {
+                        "headline": ["Space Grotesk"],
+                        "body": ["Inter"],
+                        "label": ["Inter"],
+                        "mono": ["JetBrains Mono"]
+                    },
+                    borderRadius: { "DEFAULT": "0.125rem", "lg": "0.25rem", "xl": "0.5rem", "full": "0.75rem" },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            vertical-align: middle;
+        }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body selection:bg-primary selection:text-on-primary-fixed">
+<div class="flex min-h-screen overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="hidden md:flex flex-col h-screen border-r border-[#dee5ff]/15 bg-[#0b1426] w-72 shrink-0">
+<!-- Sidebar Header -->
+<div class="p-6 flex flex-col gap-1">
+<div class="flex items-center gap-3 mb-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center border border-outline-variant/30">
+<span class="material-symbols-outlined text-primary">hub</span>
+</div>
+<div>
+<h2 class="text-lg font-bold text-[#dee5ff] font-headline tracking-tight">Project Alpha</h2>
+<p class="text-[10px] uppercase tracking-widest text-[#dee5ff]/50 font-medium">Vulnerability Research</p>
+</div>
+</div>
+<button class="w-full bg-primary-container text-on-primary-container py-2.5 rounded-lg font-headline font-bold text-sm tracking-wide flex items-center justify-center gap-2 hover:opacity-90 transition-all">
+<span class="material-symbols-outlined text-sm">add_circle</span>
+                    New Simulation
+                </button>
+</div>
+<!-- Navigation Links -->
+<nav class="flex-1 overflow-y-auto px-2 space-y-1 no-scrollbar">
+<!-- Active Item -->
+<div class="text-[#69f6b8] bg-[#69f6b8]/10 rounded-lg mx-2 my-1 px-4 py-3 flex items-center gap-3">
+<span class="material-symbols-outlined" data-icon="folder_open">folder_open</span>
+<span class="font-['Inter'] text-xs font-medium">Projects</span>
+</div>
+<!-- Hierarchical List -->
+<div class="px-4 py-2">
+<div class="flex flex-col gap-1">
+<!-- Medical Research Expanded -->
+<div class="flex items-center gap-2 px-2 py-1 text-on-surface-variant text-xs font-semibold uppercase tracking-tighter">
+<span class="material-symbols-outlined text-sm">keyboard_arrow_down</span>
+                            Medical Research
+                        </div>
+<div class="ml-4 border-l border-outline-variant/30 pl-4 flex flex-col gap-1">
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] py-1.5 text-xs font-mono flex items-center gap-2 group" href="#">
+<span class="w-1 h-1 rounded-full bg-secondary group-hover:scale-125 transition-transform"></span>
+                                Sim_01: Baseline
+                            </a>
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] py-1.5 text-xs font-mono flex items-center gap-2 group" href="#">
+<span class="w-1 h-1 rounded-full bg-tertiary group-hover:scale-125 transition-transform"></span>
+                                Sim_02: Krum vs LabelFlip
+                            </a>
+</div>
+<!-- IoT Defense Collapsed -->
+<div class="flex items-center gap-2 px-2 py-3 text-on-surface-variant text-xs font-semibold uppercase tracking-tighter opacity-60 hover:opacity-100 cursor-pointer transition-opacity">
+<span class="material-symbols-outlined text-sm">keyboard_arrow_right</span>
+                            IoT Defense
+                        </div>
+</div>
+</div>
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] hover:bg-[#90abff]/5 px-4 py-3 flex items-center gap-3 mx-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="hub">hub</span>
+<span class="font-['Inter'] text-xs font-medium">Active Nodes</span>
+</a>
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] hover:bg-[#90abff]/5 px-4 py-3 flex items-center gap-3 mx-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined text-tertiary" data-icon="security">security</span>
+<span class="font-['Inter'] text-xs font-medium">Poisoning Alerts</span>
+</a>
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] hover:bg-[#90abff]/5 px-4 py-3 flex items-center gap-3 mx-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="verified_user">verified_user</span>
+<span class="font-['Inter'] text-xs font-medium">Defense Logs</span>
+</a>
+<a class="text-[#dee5ff]/50 hover:text-[#dee5ff] hover:bg-[#90abff]/5 px-4 py-3 flex items-center gap-3 mx-2 rounded-lg transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-['Inter'] text-xs font-medium">System Health</span>
+</a>
+</nav>
+<!-- Footer Tabs -->
+<div class="p-4 border-t border-[#dee5ff]/10 bg-surface-container-low">
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-primary text-xs font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="description">description</span>
+                    Documentation
+                </a>
+<a class="flex items-center gap-3 px-4 py-2 text-on-surface-variant hover:text-primary text-xs font-medium transition-colors" href="#">
+<span class="material-symbols-outlined text-sm" data-icon="terminal">terminal</span>
+                    Terminal
+                </a>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col h-screen overflow-y-auto no-scrollbar bg-background">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center w-full px-6 h-16 bg-[#060e20] shrink-0 z-10 sticky top-0">
+<div class="flex items-center gap-8">
+<h1 class="text-xl font-black text-[#dee5ff] tracking-tighter font-headline uppercase">Federated Simulation &amp; Defense</h1>
+<nav class="hidden lg:flex items-center gap-6">
+<a class="text-[#90abff] border-b-2 border-[#90abff] pb-1 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold" href="#">Network</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] transition-colors duration-200 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold" href="#">Threats</a>
+<a class="text-[#dee5ff]/60 hover:text-[#90abff] transition-colors duration-200 font-['Space_Grotesk'] tracking-tight text-sm uppercase font-bold" href="#">Archive</a>
+</nav>
+</div>
+<div class="flex items-center gap-4">
+<div class="hidden md:flex items-center bg-surface-container px-3 py-1.5 rounded-lg border border-outline-variant/20">
+<span class="material-symbols-outlined text-primary text-sm mr-2">search</span>
+<input class="bg-transparent border-none outline-none text-xs text-on-surface placeholder:text-on-surface-variant/50 w-48" placeholder="Search parameters..." type="text"/>
+</div>
+<div class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="notifications">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-primary transition-colors" data-icon="settings">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden border border-primary/30">
+<img alt="Researcher Profile" class="w-full h-full object-cover" data-alt="Researcher Profile portrait avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBI5bn6agz_heoAIjM1HC8RXDn755PfxetcMhGFexrXRIXgSH3GvLSJqgVgxXQENUtiLCd0bHqxBb78lMWLVZyNz1GH3cad7Fk_H0jtbQRTjC-m-JheTj7kcr-1RuCI8G7w3F0NKjMqXzyQWVFxPQx4uL3EHblSaPcHL-QmkNe3H7huTg-itYno246BoTJNiVprEnFubEIwN7r-T5tP7qvYuAsqQq6msEO7uZKckraoE1XvlIxdtMnwqnfniDgPABnCNiWHuqxqP4s"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Dashboard Content -->
+<div class="p-8 max-w-7xl w-full mx-auto">
+<!-- Hero Asymmetric Layout -->
+<section class="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-12 items-start">
+<div class="lg:col-span-8">
+<div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary/10 border border-secondary/20 mb-6">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-[10px] font-mono text-secondary font-bold uppercase tracking-widest">Active Research Segment</span>
+</div>
+<h2 class="text-6xl font-black font-headline text-on-surface tracking-tighter leading-none mb-4">Medical Research <span class="text-primary-dim">Cluster_04</span></h2>
+<p class="text-on-surface-variant text-lg max-w-2xl leading-relaxed mb-8">
+                            Analyzing federated learning robustness against targeted poisoning attacks within distributed healthcare nodes. Focusing on high-precision MRI synthesis sanitization.
+                        </p>
+<!-- Summary Stats Bento -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<p class="text-[10px] uppercase font-bold text-primary tracking-widest mb-1">Total Simulations</p>
+<p class="text-4xl font-headline font-black text-on-surface">124</p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<p class="text-[10px] uppercase font-bold text-secondary tracking-widest mb-1">Success Rate</p>
+<p class="text-4xl font-headline font-black text-on-surface">98.2<span class="text-xl text-secondary">%</span></p>
+</div>
+<div class="bg-surface-container-low p-6 rounded-xl border border-outline-variant/10">
+<p class="text-[10px] uppercase font-bold text-tertiary tracking-widest mb-1">Blocked Attacks</p>
+<p class="text-4xl font-headline font-black text-on-surface">1.4k</p>
+</div>
+</div>
+</div>
+<!-- CTA Action Card -->
+<div class="lg:col-span-4 h-full">
+<div class="bg-gradient-to-br from-primary/10 to-surface-container-highest p-8 rounded-2xl border border-primary/20 flex flex-col items-center justify-center text-center h-full group hover:border-primary/40 transition-all">
+<div class="w-20 h-20 rounded-full bg-primary/20 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+<span class="material-symbols-outlined text-4xl text-primary" style="font-variation-settings: 'FILL' 1;">rocket_launch</span>
+</div>
+<h3 class="text-2xl font-black font-headline text-on-surface mb-3 tracking-tight">Initiate New Simulation</h3>
+<p class="text-on-surface-variant text-sm mb-8">Deploy a customized defense model to active nodes for real-time stress testing.</p>
+<button class="w-full bg-gradient-to-r from-primary to-primary-container text-on-primary py-4 rounded-xl font-headline font-extrabold uppercase tracking-widest shadow-xl shadow-primary/10 active:scale-95 transition-all">
+                                Deploy Simulation
+                            </button>
+</div>
+</div>
+</section>
+<!-- Activity Feed & Logs (Main-Action-Terminal Split) -->
+<section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+<!-- Project Details (Left) -->
+<div class="lg:col-span-2 space-y-6">
+<div class="flex items-center justify-between mb-2">
+<h4 class="font-headline font-bold text-lg text-on-surface">Recent Deployments</h4>
+<a class="text-primary text-xs font-bold uppercase tracking-widest hover:underline" href="#">View History</a>
+</div>
+<!-- Table-like List (No Borders) -->
+<div class="space-y-2">
+<div class="bg-surface-container-low hover:bg-surface-bright p-4 rounded-xl flex items-center justify-between transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">verified</span>
+</div>
+<div>
+<p class="font-mono text-sm text-on-surface font-bold">Sim_01: Baseline_MRI_Sanity</p>
+<p class="text-[10px] text-on-surface-variant">Completed 2h ago • 12 Nodes</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<p class="text-xs font-mono text-secondary">99.9% Clean</p>
+<div class="w-24 h-1 bg-surface-container-highest rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-secondary w-[99%]"></div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface transition-colors">chevron_right</span>
+</div>
+</div>
+<div class="bg-surface-container hover:bg-surface-bright p-4 rounded-xl flex items-center justify-between transition-colors cursor-pointer group">
+<div class="flex items-center gap-4">
+<div class="w-10 h-10 rounded-lg bg-surface-container-highest flex items-center justify-center text-tertiary">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">warning</span>
+</div>
+<div>
+<p class="font-mono text-sm text-on-surface font-bold">Sim_02: Krum_vs_LabelFlip</p>
+<p class="text-[10px] text-on-surface-variant">In Progress... • 8 Nodes</p>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="text-right">
+<p class="text-xs font-mono text-tertiary">12% Poisoned</p>
+<div class="w-24 h-1 bg-surface-container-highest rounded-full mt-1 overflow-hidden">
+<div class="h-full bg-tertiary w-[12%]"></div>
+</div>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-on-surface transition-colors">chevron_right</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Real-time Terminal (Right) -->
+<div class="flex flex-col">
+<div class="flex items-center justify-between mb-4">
+<h4 class="font-headline font-bold text-lg text-on-surface">Terminal Stream</h4>
+<span class="flex items-center gap-2 text-[10px] font-mono text-secondary uppercase font-bold">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse"></span> Live
+                            </span>
+</div>
+<div class="bg-surface-container-lowest border border-outline-variant/20 rounded-xl p-4 font-mono text-[11px] leading-relaxed h-[400px] overflow-hidden flex flex-col">
+<div class="flex-1 space-y-1 text-on-surface-variant/80 overflow-y-auto no-scrollbar">
+<p><span class="text-primary">[SYSTEM]</span> Initializing federated kernel v4.2.1...</p>
+<p><span class="text-secondary">[DEFENSE]</span> Sanitization layer active on Node_72</p>
+<p><span class="text-on-surface-variant">[QUERY]</span> Fetching global model weights...</p>
+<p><span class="text-tertiary">[ALERT]</span> Malicious gradient detected from IP 192.168.1.4</p>
+<p><span class="text-secondary">[DEFENSE]</span> Trimmed-mean aggregation applied successfully.</p>
+<p><span class="text-primary">[SYSTEM]</span> Checkpoint saved: alpha_weights_final.bin</p>
+<p><span class="text-on-surface-variant">[STATUS]</span> Iteration 244/500 in progress...</p>
+<p class="animate-pulse">_</p>
+</div>
+<div class="mt-4 pt-4 border-t border-outline-variant/10 flex items-center gap-2">
+<span class="text-secondary">$</span>
+<input class="bg-transparent border-none outline-none text-secondary w-full" placeholder="Enter command..." type="text"/>
+</div>
+</div>
+</div>
+</section>
+</div>
+</main>
+</div>
+<!-- Mobile Navigation Suppressed as per Task Logic for Project Explorer -->
+</body></html>
