@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Settings, X } from 'lucide-react';
+import { Settings, X, Plus, Trash2 } from 'lucide-react';
+import CustomAggregationModal from './CustomAggregationModal';
 import { useTheme } from '../context/ThemeContext';
 
-export default function SimulationOptions({ onClose, onSave, initialConfig }) {
+export default function SimulationOptions({ onClose, onSave, initialConfig, apiUrl, token }) {
     const { isDarkMode } = useTheme();
     const [config, setConfig] = useState(initialConfig || {
         N: 10,
@@ -24,6 +25,15 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
         watermark_type: 'apple'
     });
 
+    // Custom aggregation functions state (persisted in localStorage)
+    const [customFunctions, setCustomFunctions] = useState(() => {
+        try {
+            const saved = localStorage.getItem('custom_aggregation_functions');
+            return saved ? JSON.parse(saved) : [];
+        } catch { return []; }
+    });
+    const [showCustomModal, setShowCustomModal] = useState(false);
+
     const handleChange = (field, value) => {
         setConfig(prev => ({
             ...prev,
@@ -34,6 +44,25 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         onSave(config);
+    };
+
+    // Custom aggregation handlers
+    const handleAddCustomFunction = (funcData) => {
+        const updated = [...customFunctions.filter(f => f.name !== funcData.name), funcData];
+        setCustomFunctions(updated);
+        localStorage.setItem('custom_aggregation_functions', JSON.stringify(updated));
+        handleChange('data_poison_protection', `@${funcData.name}`);
+        setShowCustomModal(false);
+    };
+
+    const handleRemoveCustomFunction = (funcName) => {
+        const updated = customFunctions.filter(f => f.name !== funcName);
+        setCustomFunctions(updated);
+        localStorage.setItem('custom_aggregation_functions', JSON.stringify(updated));
+        // If the removed function was selected, reset to fedavg
+        if (config.data_poison_protection === `@${funcName}`) {
+            handleChange('data_poison_protection', 'fedavg');
+        }
     };
 
     // Determine which sub-parameters to show based on selected operation
@@ -385,24 +414,67 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                                 Aggregation Method
                             </label>
-                            <select
-                                value={config.data_poison_protection}
-                                onChange={(e) => handleChange('data_poison_protection', e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
-                            >
-                                <option value="fedavg">FedAvg - Standard (vulnerable to poisoning)</option>
-                                <option value="krum">Krum - Selects closest update (99% attack elimination)</option>
-                                <option value="trimmed_mean">Trimmed Mean - Removes extremes (resistant to label-flipping)</option>
-                                <option value="median">Median - Resistant to 20% malicious clients</option>
-                                <option value="foolsgold">FoolsGold - Sybil/Label Flip defense</option>
-                                <option value="norm_clipping">Norm Clipping - Clips update norms (backdoor defense)</option>
-                                <option value="trimmed_mean_krum">Trimmed Mean + Krum - Hybrid approach</option>
-                                <option value="random">Random - Randomizes between Krum and Trimmed Mean</option>
-                            </select>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={config.data_poison_protection}
+                                    onChange={(e) => handleChange('data_poison_protection', e.target.value)}
+                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                                >
+                                    <option value="fedavg">FedAvg - Standard (vulnerable to poisoning)</option>
+                                    <option value="krum">Krum - Selects closest update (99% attack elimination)</option>
+                                    <option value="trimmed_mean">Trimmed Mean - Removes extremes (resistant to label-flipping)</option>
+                                    <option value="median">Median - Resistant to 20% malicious clients</option>
+                                    <option value="foolsgold">FoolsGold - Sybil/Label Flip defense</option>
+                                    <option value="norm_clipping">Norm Clipping - Clips update norms (backdoor defense)</option>
+                                    <option value="trimmed_mean_krum">Trimmed Mean + Krum - Hybrid approach</option>
+                                    <option value="random">Random - Randomizes between Krum and Trimmed Mean</option>
+                                    {/* Custom user-defined aggregation functions */}
+                                    {customFunctions.length > 0 && (
+                                        <optgroup label="── Custom Functions ──">
+                                            {customFunctions.map(fn => (
+                                                <option key={fn.name} value={`@${fn.name}`}>
+                                                    🧩 @{fn.name} (custom)
+                                                </option>
+                                            ))}
+                                        </optgroup>
+                                    )}
+                                </select>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowCustomModal(true)}
+                                    className="flex-shrink-0 p-2 bg-purple-100 hover:bg-purple-200 dark:bg-purple-900/40 dark:hover:bg-purple-900/60 text-purple-700 dark:text-purple-300 rounded-lg transition-colors"
+                                    title="Add custom aggregation function"
+                                >
+                                    <Plus className="w-5 h-5" />
+                                </button>
+                            </div>
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                 Select the robust aggregation method to protect against data poisoning attacks
                             </p>
                         </div>
+
+                        {/* List of custom functions with remove buttons */}
+                        {customFunctions.length > 0 && (
+                            <div className="mt-3 space-y-1">
+                                <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Custom functions:</p>
+                                {customFunctions.map(fn => (
+                                    <div key={fn.name} className="flex items-center justify-between px-3 py-1.5 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                                        <span className="text-sm font-mono text-purple-700 dark:text-purple-300">
+                                            @{fn.name}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveCustomFunction(fn.name)}
+                                            className="p-1 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                                            title={`Remove @${fn.name}`}
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
                         <div className="mt-3 p-3 bg-green-100 dark:bg-green-900/30 rounded text-sm text-green-800 dark:text-green-300">
                             <strong>Info:</strong> This parameter determines how metrics from multiple clients are aggregated.
                             Robust methods like Krum and Trimmed Mean provide protection against malicious clients.
@@ -426,6 +498,16 @@ export default function SimulationOptions({ onClose, onSave, initialConfig }) {
                         </button>
                     </div>
                 </form>
+
+                {/* Custom Aggregation Modal */}
+                {showCustomModal && (
+                    <CustomAggregationModal
+                        onClose={() => setShowCustomModal(false)}
+                        onSave={handleAddCustomFunction}
+                        apiUrl={apiUrl}
+                        token={token}
+                    />
+                )}
             </div>
         </div>
     );

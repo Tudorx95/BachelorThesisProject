@@ -1179,6 +1179,8 @@ function AppContent() {
                         setShowSimulationOptions(false);
                     }}
                     initialConfig={simulationConfig}
+                    apiUrl={API_URL}
+                    token={token}
                 />
             )}
 

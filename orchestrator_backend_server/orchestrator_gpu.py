@@ -539,6 +539,12 @@ for i in range(N):
             f"--strategy {config['strategy']} "
             f"--data_poison_protection {config.get('data_poison_protection', 'fedavg')}"
         )
+        # If custom aggregation (@ prefix), add the path to the custom function file
+        protection = config.get('data_poison_protection', 'fedavg')
+        if protection.startswith('@'):
+            func_name = protection[1:]  # Remove @ prefix
+            custom_agg_path = BASE_DIR / f"user_{user_id}" / f"{func_name}.py"
+            cmd += f" --custom_aggregation {custom_agg_path}"
 
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
@@ -618,6 +624,11 @@ for i in range(N):
             f"--data_poisoning "
             f"--data_poison_protection {config.get('data_poison_protection', 'fedavg')}"
         )
+        # If custom aggregation (@ prefix), add the path to the custom function file
+        if protection.startswith('@'):
+            func_name = protection[1:]
+            custom_agg_path = BASE_DIR / f"user_{user_id}" / f"{func_name}.py"
+            cmd += f" --custom_aggregation {custom_agg_path}"
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env)
         if result.returncode != 0:
             error_msg = f"Poisoned DP FL simulation failed: {result.stderr}\nStdout: {result.stdout}"
@@ -839,6 +850,38 @@ def login():
     if user in VALID_USERS and VALID_USERS[user] == password:
         return jsonify({"status": "success", "token": f"token-{user}-123"}), 200
     return jsonify({"status": "error"}), 401
+
+
+@app.route("/upload-aggregation", methods=["POST"])
+def upload_aggregation():
+    """Receive and save a custom aggregation function file"""
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer token-"):
+        return jsonify({"error": "Unauthorized"}), 403
+    
+    data = request.json
+    user_id = data.get("user_id", 1)
+    function_name = data.get("function_name")
+    code = data.get("code")
+    
+    if not function_name or not code:
+        return jsonify({"error": "Missing function_name or code"}), 400
+    
+    # Save to user directory (shared across all tasks for this user)
+    user_dir = BASE_DIR / f"user_{user_id}"
+    user_dir.mkdir(parents=True, exist_ok=True)
+    
+    file_path = user_dir / f"{function_name}.py"
+    with open(file_path, 'w') as f:
+        f.write(code)
+    
+    app.logger.info(f"Custom aggregation '{function_name}' saved to {file_path}")
+    
+    return jsonify({
+        "status": "success",
+        "function_name": function_name,
+        "path": str(file_path)
+    }), 200
 
 @app.route("/simulate", methods=["POST"])
 def simulate():

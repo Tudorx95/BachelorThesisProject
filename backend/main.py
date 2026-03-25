@@ -17,6 +17,7 @@ import requests
 import logging
 import subprocess
 import tempfile
+import ast
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -403,6 +404,95 @@ def run_opengrep_scan(code: str) -> dict:
                 os.unlink(tmp_file.name)
             except:
                 pass
+
+
+# ============================================================================
+# CUSTOM AGGREGATION FUNCTION UPLOAD
+# ============================================================================
+
+class CustomAggregationUpload(BaseModel):
+    function_name: str
+    code: str
+
+
+def upload_aggregation_to_orchestrator(user_id: int, function_name: str, code: str):
+    """Upload a custom aggregation function to the orchestrator server"""
+    token = login_to_orchestrator()
+    if not token:
+        raise HTTPException(status_code=503, detail="Cannot connect to orchestrator server")
+    
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.post(
+            f"{ORCHESTRATOR_URL}/upload-aggregation",
+            json={
+                "user_id": user_id,
+                "function_name": function_name,
+                "code": code
+            },
+            headers=headers,
+            timeout=15
+        )
+        
+        if response.status_code == 200:
+            logger.info(f"Custom aggregation '{function_name}' uploaded to orchestrator")
+            return response.json()
+        else:
+            logger.error(f"Orchestrator error uploading aggregation: {response.text}")
+            raise HTTPException(status_code=500, detail=f"Orchestrator error: {response.text}")
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Orchestrator request timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error uploading aggregation to orchestrator: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
+
+
+@app.post("/api/upload-aggregation")
+async def upload_custom_aggregation(
+    upload: CustomAggregationUpload,
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Validate and upload a custom aggregation function.
+    Validates Python syntax with ast.parse() and checks for custom_aggregate function.
+    """
+    # Sanitize function name
+    import re
+    sanitized_name = re.sub(r'[^a-zA-Z0-9_]', '', upload.function_name.lower())
+    if len(sanitized_name) < 2:
+        raise HTTPException(status_code=400, detail="Function name must be at least 2 alphanumeric characters.")
+    
+    # Validate Python syntax
+    try:
+        tree = ast.parse(upload.code)
+    except SyntaxError as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Python syntax error at line {e.lineno}: {e.msg}"
+        )
+    
+    # Check that the code contains a function named 'custom_aggregate'
+    func_names = [node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)]
+    if 'custom_aggregate' not in func_names:
+        raise HTTPException(
+            status_code=400,
+            detail='Code must contain a function named "custom_aggregate".'
+        )
+    
+    # Upload to orchestrator
+    result = upload_aggregation_to_orchestrator(
+        user_id=current_user.id,
+        function_name=sanitized_name,
+        code=upload.code
+    )
+    
+    return {
+        "status": "success",
+        "function_name": sanitized_name,
+        "message": f"Custom aggregation function '@{sanitized_name}' validated and uploaded."
+    }
 
 
 # Orchestrator communication functions
