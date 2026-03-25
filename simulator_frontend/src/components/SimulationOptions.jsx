@@ -376,35 +376,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
                                     </button>
                                 </div>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Type of poisoning attack</p>
-
-                                {/* List of custom poisoning functions with remove buttons */}
-                                {customPoisoningFunctions.length > 0 && (
-                                    <div className="mt-3">
-                                        <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Custom operations:</p>
-                                        <div className="space-y-1 max-h-36 overflow-y-auto sidebar-scroll pr-1">
-                                            {customPoisoningFunctions.map(fn => (
-                                                <div key={fn.name} className="flex items-center justify-between px-3 py-1.5 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
-                                                    <span className="text-sm font-mono text-orange-700 dark:text-orange-300">
-                                                        @{fn.name}
-                                                    </span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleRemoveCustomPoisoningFunction(fn.name)}
-                                                        disabled={isDeletingParams.funcName === fn.name && isDeletingParams.funcType === 'poisoning'}
-                                                        className="p-1 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
-                                                        title={`Remove @${fn.name}`}
-                                                    >
-                                                        {isDeletingParams.funcName === fn.name && isDeletingParams.funcType === 'poisoning' ? (
-                                                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                                                        ) : (
-                                                            <Trash2 className="w-3.5 h-3.5" />
-                                                        )}
-                                                    </button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
                             </div>
 
                             <div className="col-span-6 sm:col-span-3">
@@ -440,6 +411,35 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
                                 />
                                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">% of data to poison (0.01-1.0)</p>
                             </div>
+
+                            {/* List of custom poisoning functions with remove buttons (Full Width) */}
+                            {customPoisoningFunctions.length > 0 && (
+                                <div className="col-span-12 mt-2">
+                                    <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Custom operations:</p>
+                                    <div className="space-y-1 max-h-36 overflow-y-auto sidebar-scroll pr-1">
+                                        {customPoisoningFunctions.map(fn => (
+                                            <div key={fn.name} className="flex items-center justify-between px-3 py-1.5 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600">
+                                                <span className="text-sm font-mono text-orange-700 dark:text-orange-300">
+                                                    @{fn.name}
+                                                </span>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleRemoveCustomPoisoningFunction(fn.name)}
+                                                    disabled={isDeletingParams.funcName === fn.name && isDeletingParams.funcType === 'poisoning'}
+                                                    className="p-1 text-red-400 hover:text-red-600 dark:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors disabled:opacity-50"
+                                                    title={`Remove @${fn.name}`}
+                                                >
+                                                    {isDeletingParams.funcName === fn.name && isDeletingParams.funcType === 'poisoning' ? (
+                                                        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="w-3.5 h-3.5" />
+                                                    )}
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Conditional sub-parameters based on selected operation */}

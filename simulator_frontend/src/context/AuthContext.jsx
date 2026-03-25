@@ -32,6 +32,8 @@ export const AuthProvider = ({ children }) => {
                 console.log('Token expired, clearing session');
                 localStorage.removeItem('token');
                 localStorage.removeItem('user');
+                localStorage.removeItem('custom_aggregation_functions');
+                localStorage.removeItem('custom_poisoning_functions');
                 setToken(null);
                 setUser(null);
             } else {
@@ -54,6 +56,8 @@ export const AuthProvider = ({ children }) => {
         setUser(null);
         localStorage.removeItem('token');
         localStorage.removeItem('user');
+        localStorage.removeItem('custom_aggregation_functions');
+        localStorage.removeItem('custom_poisoning_functions');
     };
 
     // Check token expiration periodically (every 30 seconds)

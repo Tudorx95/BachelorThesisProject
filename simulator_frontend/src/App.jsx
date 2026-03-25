@@ -921,9 +921,7 @@ function AppContent() {
 
             const response = await fetch(`${API_URL}/run`, {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
+                headers: authHeaders,
                 body: JSON.stringify({
                     filename: activeFile.name,
                     code: activeFile.content,

@@ -1132,7 +1132,11 @@ async def move_file_to_project(
 
 # Simulation endpoint
 @app.post("/run")
-async def run_code(request: RunRequest, background_tasks: BackgroundTasks):
+async def run_code(
+    request: RunRequest, 
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_user)
+):
     # Generate unique task ID
     logger.info("Inside run endpoint")
     task_id = str(uuid.uuid4())
@@ -1196,7 +1200,7 @@ async def run_code(request: RunRequest, background_tasks: BackgroundTasks):
                 task_id=task_id,
                 template_code=request.code,
                 config=config,
-                user_id=1  # TODO: Get from auth
+                user_id=current_user.id
             )
             output += f"✅ Simulation queued on orchestrator\n"
             logger.info(f"After Sending Task {task_id}: response {result}")

@@ -609,7 +609,7 @@ def apply_poisoning(
                     # Aplică atacul
                     if operation.startswith('@'):
                         func_name = operation[1:]
-                        script_path = Path(input_dir).parent / f"{func_name}.py"
+                        script_path = Path(input_dir).resolve().parents[2] / f"{func_name}.py"
                         if not script_path.exists():
                             print(f"ERROR: Custom poisoning script not found: {script_path}", file=sys.stderr)
                             sys.exit(1)
@@ -771,16 +771,7 @@ Exemple:
     parser.add_argument("dir_name", type=str, help="Data directory path")
     
     parser.add_argument("--operation", type=str, default="backdoor_blended",
-                        choices=[
-                            "label_flip",
-                            "backdoor_badnets",
-                            "backdoor_blended", 
-                            "backdoor_sig",
-                            "backdoor_trojan",
-                            "semantic_backdoor",
-                            "backdoor_edge_case"
-                        ],
-                        help="Poisoning attack type")
+                        help="Poisoning attack type (or @custom_function)")
     
     parser.add_argument("--intensity", type=float, default=0.1,
                         help="Attack intensity (0-1)")
