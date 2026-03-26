@@ -642,6 +642,33 @@ async def delete_custom_function(
         logger.error(f"Error deleting function from orchestrator: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
+@app.get("/api/custom-functions")
+async def get_custom_functions(current_user: User = Depends(get_current_user)):
+    """Fetch custom functions from orchestrator"""
+    token = login_to_orchestrator()
+    if not token:
+        raise HTTPException(status_code=503, detail="Cannot connect to orchestrator")
+        
+    try:
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.get(
+            f"{ORCHESTRATOR_URL}/custom-functions?user_id={current_user.id}",
+            headers=headers,
+            timeout=10
+        )
+        if response.status_code == 200:
+            return response.json()
+        else:
+            logger.error(f"Orchestrator error fetching functions: {response.text}")
+            raise HTTPException(status_code=500, detail=f"Orchestrator error: {response.text}")
+            
+    except requests.exceptions.Timeout:
+        raise HTTPException(status_code=504, detail="Orchestrator request timed out")
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching custom functions from orchestrator: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error: {str(e)}")
 
 # Orchestrator communication functions
 def login_to_orchestrator():

@@ -66,6 +66,31 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    useEffect(() => {
+        const fetchCustomFunctions = async () => {
+            if (!apiUrl || !token) return;
+            try {
+                const response = await fetch(`${apiUrl}/api/custom-functions`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    const agg = data.aggregation || [];
+                    const pois = data.poisoning || [];
+                    
+                    setCustomFunctions(agg);
+                    setCustomPoisoningFunctions(pois);
+                    
+                    localStorage.setItem('custom_aggregation_functions', JSON.stringify(agg));
+                    localStorage.setItem('custom_poisoning_functions', JSON.stringify(pois));
+                }
+            } catch (err) {
+                console.error("Failed to fetch custom functions", err);
+            }
+        };
+        fetchCustomFunctions();
+    }, [apiUrl, token]);
+
     const predefinedAggregationOptions = [
         { value: 'fedavg', label: 'FedAvg - Standard (vulnerable to poisoning)' },
         { value: 'krum', label: 'Krum - Selects closest update (99% attack elimination)' },

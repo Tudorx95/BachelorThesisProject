@@ -939,6 +939,42 @@ def delete_custom_function(func_type, func_name):
         app.logger.warning(f"File not found for deletion: {file_path}")
         return jsonify({"error": "Function not found"}), 404
 
+@app.route("/custom-functions", methods=["GET"])
+def list_custom_functions():
+    """List custom aggregation and poisoning functions"""
+    token = request.headers.get("Authorization")
+    if not token or not token.startswith("Bearer token-"):
+        return jsonify({"error": "Unauthorized"}), 403
+        
+    user_id = request.args.get("user_id", 1)
+    user_dir = BASE_DIR / f"user_{user_id}"
+    
+    aggregation_funcs = []
+    poisoning_funcs = []
+    
+    if user_dir.exists():
+        for file_path in user_dir.glob("*.py"):
+            if file_path.name in ["template_code.py", "fd_simulator.py"]:
+                continue
+                
+            try:
+                with open(file_path, "r") as f:
+                    code = f.read()
+                    
+                func_name = file_path.stem
+                
+                if "def custom_aggregate" in code:
+                    aggregation_funcs.append({"name": func_name, "code": code})
+                elif "def custom_poison" in code:
+                    poisoning_funcs.append({"name": func_name, "code": code})
+            except Exception as e:
+                app.logger.error(f"Error reading {file_path}: {e}")
+                
+    return jsonify({
+        "aggregation": aggregation_funcs,
+        "poisoning": poisoning_funcs
+    }), 200
+
 @app.route("/simulate", methods=["POST"])
 def simulate():
     app.logger.info(f"Received simulate request from {request.remote_addr}")
