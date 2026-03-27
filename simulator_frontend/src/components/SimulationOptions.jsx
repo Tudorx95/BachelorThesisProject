@@ -26,22 +26,12 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
         watermark_type: 'apple'
     });
 
-    // Custom aggregation functions state (persisted in localStorage)
-    const [customFunctions, setCustomFunctions] = useState(() => {
-        try {
-            const saved = localStorage.getItem('custom_aggregation_functions');
-            return saved ? JSON.parse(saved) : [];
-        } catch { return []; }
-    });
+    // Custom aggregation functions state (fetched from API on mount)
+    const [customFunctions, setCustomFunctions] = useState([]);
     const [showCustomModal, setShowCustomModal] = useState(false);
 
-    // Custom poisoning functions state (persisted in localStorage)
-    const [customPoisoningFunctions, setCustomPoisoningFunctions] = useState(() => {
-        try {
-            const saved = localStorage.getItem('custom_poisoning_functions');
-            return saved ? JSON.parse(saved) : [];
-        } catch { return []; }
-    });
+    // Custom poisoning functions state (fetched from API on mount)
+    const [customPoisoningFunctions, setCustomPoisoningFunctions] = useState([]);
     const [showCustomPoisoningModal, setShowCustomPoisoningModal] = useState(false);
 
     // Dropdown states
@@ -80,9 +70,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
                     
                     setCustomFunctions(agg);
                     setCustomPoisoningFunctions(pois);
-                    
-                    localStorage.setItem('custom_aggregation_functions', JSON.stringify(agg));
-                    localStorage.setItem('custom_poisoning_functions', JSON.stringify(pois));
                 }
             } catch (err) {
                 console.error("Failed to fetch custom functions", err);
@@ -148,7 +135,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
     const handleAddCustomFunction = (funcData) => {
         const updated = [...customFunctions.filter(f => f.name !== funcData.name), funcData];
         setCustomFunctions(updated);
-        localStorage.setItem('custom_aggregation_functions', JSON.stringify(updated));
         handleChange('data_poison_protection', `@${funcData.name}`);
         setShowCustomModal(false);
     };
@@ -163,7 +149,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
             if (res.ok) {
                 const updated = customFunctions.filter(f => f.name !== funcName);
                 setCustomFunctions(updated);
-                localStorage.setItem('custom_aggregation_functions', JSON.stringify(updated));
                 if (config.data_poison_protection === `@${funcName}`) {
                     handleChange('data_poison_protection', 'fedavg');
                 }
@@ -177,7 +162,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
     const handleAddCustomPoisoningFunction = (funcData) => {
         const updated = [...customPoisoningFunctions.filter(f => f.name !== funcData.name), funcData];
         setCustomPoisoningFunctions(updated);
-        localStorage.setItem('custom_poisoning_functions', JSON.stringify(updated));
         handleChange('poison_operation', `@${funcData.name}`);
         setShowCustomPoisoningModal(false);
     };
@@ -192,7 +176,6 @@ export default function SimulationOptions({ onClose, onSave, initialConfig, apiU
             if (res.ok) {
                 const updated = customPoisoningFunctions.filter(f => f.name !== funcName);
                 setCustomPoisoningFunctions(updated);
-                localStorage.setItem('custom_poisoning_functions', JSON.stringify(updated));
                 if (config.poison_operation === `@${funcName}`) {
                     handleChange('poison_operation', 'label_flip');
                 }

@@ -51,6 +51,14 @@ def detect_framework(code):
         return "tensorflow"
     return "pytorch"
 
+def load_json_results(file_path, label, logger):
+    """Încarcă rezultatele JSON dintr-un fișier, cu fallback la valori default."""
+    if file_path.exists() and file_path.stat().st_size > 0:
+        with open(file_path) as f:
+            return json.load(f)
+    logger.error(f"{label} results file not found or empty: {file_path}")
+    return {"final_accuracy": 0.0}
+
 def create_default_results_file(results_path):
     """Creează un fișier de rezultate default dacă simularea nu îl generează"""
     default_results = {
@@ -215,106 +223,12 @@ def run_simulation_pipeline(task_id, user_id, template_code, config, shared_simu
 
         
         # ========== STEP 3b: Partition data for FL clients (Non-IID) ==========
-        partition_script = f"""
-import os, shutil, random
-from pathlib import Path
-from collections import defaultdict
-
-data_dir = Path('{user_dir / 'clean_data'}')
-N = {config['N']}
-random.seed(42)
-
-train_dir = data_dir / 'train'
-test_dir = data_dir / 'test'
-
-# Detecteaza clasele din structura de directoare
-class_dirs = sorted([d.name for d in train_dir.iterdir() if d.is_dir()])
-num_classes = len(class_dirs)
-print(f'Detected {{num_classes}} classes: {{class_dirs}}')
-
-# Colecteaza toate imaginile per clasa
-class_images = {{}}
-for class_name in class_dirs:
-    class_dir = train_dir / class_name
-    imgs = sorted([f.name for f in class_dir.glob('*') if f.is_file()])
-    random.shuffle(imgs)
-    class_images[class_name] = imgs
-
-# Creeaza directoare per client
-for i in range(N):
-    client_dir = data_dir / f'client_{{i}}'
-    client_train = client_dir / 'train'
-    client_test = client_dir / 'test'
-    
-    if client_test.exists():
-        shutil.rmtree(client_test)
-    if client_dir.exists():
-        shutil.rmtree(client_dir)
-    shutil.copytree(str(test_dir), str(client_test))
-    
-    for class_name in class_dirs:
-        (client_train / class_name).mkdir(parents=True, exist_ok=True)
-
-# Setarile conform lucrarii (Sectiunea 6.3: x% shared, (1-x)% disjoint)
-shared_ratio = 0.2    # 20% date distribuite uniform tuturor
-disjoint_ratio = 0.8  # 80% date specifice clasei dominante
-
-# 1. Asociem fiecare client cu o clasa dominanta
-client_dominant_class = {{i: class_dirs[i % num_classes] for i in range(N)}}
-
-# 2. Impartim imaginile globale in doua pool-uri pentru fiecare clasa
-disjoint_pools = {{}}
-shared_pools = {{}}
-
-for c in class_dirs:
-    imgs = class_images[c]
-    split_idx = int(len(imgs) * disjoint_ratio)
-    disjoint_pools[c] = imgs[:split_idx]
-    shared_pools[c] = imgs[split_idx:]
-
-client_allocations = defaultdict(list)
-
-# 3. Alocam datele Disjoint (Dominante)
-for c in class_dirs:
-    clients_with_c_dom = [i for i, dom_c in client_dominant_class.items() if dom_c == c]
-    
-    if not clients_with_c_dom:
-        shared_pools[c].extend(disjoint_pools[c])
-        continue
-        
-    chunk_size = len(disjoint_pools[c]) // len(clients_with_c_dom)
-    for idx, client_id in enumerate(clients_with_c_dom):
-        start = idx * chunk_size
-        end = start + chunk_size if idx < len(clients_with_c_dom) - 1 else len(disjoint_pools[c])
-        client_allocations[client_id].extend([(c, img) for img in disjoint_pools[c][start:end]])
-
-# 4. Alocam datele Shared (Uniforme)
-for c in class_dirs:
-    chunk_size = len(shared_pools[c]) // N
-    for client_id in range(N):
-        start = client_id * chunk_size
-        end = start + chunk_size if client_id < N - 1 else len(shared_pools[c])
-        client_allocations[client_id].extend([(c, img) for img in shared_pools[c][start:end]])
-
-# 5. Copierea efectiva a fisierelor pe disc
-print(f'Partitioning data into {{N}} clients...')
-for client_id, allocations in client_allocations.items():
-    client_train = data_dir / f'client_{{client_id}}' / 'train'
-    for c, img_name in allocations:
-        src = train_dir / c / img_name
-        dst = client_train / c / img_name
-        shutil.copy2(str(src), str(dst))
-
-for i in range(N):
-    client_train = data_dir / f'client_{{i}}' / 'train'
-    dominant_class = client_dominant_class[i]
-    per_class = {{c: len(list((client_train / c).glob('*'))) if (client_train / c).exists() else 0 for c in class_dirs}}
-    total = sum(per_class.values())
-    dom_pct = per_class[dominant_class] / total * 100 if total > 0 else 0
-    print(f'  Client {{i}}: {{total}} imgs, dominant={{dominant_class}} ({{dom_pct:.0f}}%)')
-"""
-
-        cmd = f"{conda_activate} && cd {user_dir} && python -c \"{partition_script}\""
+        partition_script = Path(__file__).parent / "partition_data_fl.py"
+        cmd = (
+            f"{conda_activate} && python {partition_script} "
+            f"--data_dir {user_dir / 'clean_data'} "
+            f"--num_clients {config['N']}"
+        )
         result = subprocess.run(cmd, shell=True, capture_output=True, text=True, executable="/bin/bash", env=env_no_gpu)
         if result.returncode != 0:
             error_msg = f"Data partitioning failed: {result.stderr}\nStdout: {result.stdout}"
@@ -646,33 +560,10 @@ for i in range(N):
         }
         
         # Load and analyze results
-        if test_file_clean.exists() and test_file_clean.stat().st_size > 0:
-            with open(test_file_clean) as f:
-                clean_results = json.load(f)
-        else:
-            app.logger.error(f"Clean results file not found or empty: {test_file_clean}")
-            clean_results = {"final_accuracy": 0.0}
-
-        if test_file_clean_dp.exists() and test_file_clean_dp.stat().st_size > 0:
-            with open(test_file_clean_dp) as f:
-                clean_dp_results = json.load(f)
-        else:
-            app.logger.error(f"Clean DP results file not found or empty: {test_file_clean_dp}")
-            clean_dp_results = {"final_accuracy": 0.0}
-
-        if test_file_poisoned.exists() and test_file_poisoned.stat().st_size > 0:
-            with open(test_file_poisoned) as f:
-                poisoned_results = json.load(f)
-        else:
-            app.logger.error(f"Poisoned results file not found or empty: {test_file_poisoned}")
-            poisoned_results = {"final_accuracy": 0.0}
-
-        if test_file_poisoned_dp.exists() and test_file_poisoned_dp.stat().st_size > 0:
-            with open(test_file_poisoned_dp) as f:
-                poisoned_dp_results = json.load(f)
-        else:
-            app.logger.error(f"Poisoned DP results file not found or empty: {test_file_poisoned_dp}")
-            poisoned_dp_results = {"final_accuracy": 0.0}
+        clean_results = load_json_results(test_file_clean, "Clean", app.logger)
+        clean_dp_results = load_json_results(test_file_clean_dp, "Clean DP", app.logger)
+        poisoned_results = load_json_results(test_file_poisoned, "Poisoned", app.logger)
+        poisoned_dp_results = load_json_results(test_file_poisoned_dp, "Poisoned DP", app.logger)
 
         clean_accuracy = clean_results.get('final_accuracy', 0)
         clean_dp_accuracy = clean_dp_results.get('final_accuracy', 0)
@@ -853,11 +744,14 @@ def login():
 
 
 @app.route("/upload-aggregation", methods=["POST"])
-def upload_aggregation():
-    """Receive and save a custom aggregation function file"""
+@app.route("/upload-poisoning", methods=["POST"])
+def upload_custom_function():
+    """Receive and save a custom function file (aggregation or poisoning)"""
     token = request.headers.get("Authorization")
     if not token or not token.startswith("Bearer token-"):
         return jsonify({"error": "Unauthorized"}), 403
+    
+    func_type = "aggregation" if request.path.endswith("aggregation") else "poisoning"
     
     data = request.json
     user_id = data.get("user_id", 1)
@@ -875,38 +769,7 @@ def upload_aggregation():
     with open(file_path, 'w') as f:
         f.write(code)
     
-    app.logger.info(f"Custom aggregation '{function_name}' saved to {file_path}")
-    
-    return jsonify({
-        "status": "success",
-        "function_name": function_name,
-        "path": str(file_path)
-    }), 200
-
-@app.route("/upload-poisoning", methods=["POST"])
-def upload_poisoning():
-    """Receive and save a custom poisoning function file"""
-    token = request.headers.get("Authorization")
-    if not token or not token.startswith("Bearer token-"):
-        return jsonify({"error": "Unauthorized"}), 403
-    
-    data = request.json
-    user_id = data.get("user_id", 1)
-    function_name = data.get("function_name")
-    code = data.get("code")
-    
-    if not function_name or not code:
-        return jsonify({"error": "Missing function_name or code"}), 400
-    
-    # Save to user directory
-    user_dir = BASE_DIR / f"user_{user_id}"
-    user_dir.mkdir(parents=True, exist_ok=True)
-    
-    file_path = user_dir / f"{function_name}.py"
-    with open(file_path, 'w') as f:
-        f.write(code)
-    
-    app.logger.info(f"Custom poisoning '{function_name}' saved to {file_path}")
+    app.logger.info(f"Custom {func_type} '{function_name}' saved to {file_path}")
     
     return jsonify({
         "status": "success",

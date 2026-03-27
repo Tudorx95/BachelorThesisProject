@@ -47,12 +47,8 @@ function AppContent() {
     const [projects, setProjects] = useState([]);
 
     // Template content state
-    const [templateTensorflow, setTemplateTensorflow] = useState(
-        () => localStorage.getItem('custom_template_tf_v3') || '# TensorFlow Template\n'
-    );
-    const [templatePytorch, setTemplatePytorch] = useState(
-        () => localStorage.getItem('custom_template_pt_v3') || '# PyTorch Template\n'
-    );
+    const [templateTensorflow, setTemplateTensorflow] = useState('# TensorFlow Template\n');
+    const [templatePytorch, setTemplatePytorch] = useState('# PyTorch Template\n');
     const [activeTemplate, setActiveTemplate] = useState('tensorflow');
 
     const [showSimulationOptions, setShowSimulationOptions] = useState(false);
@@ -112,22 +108,19 @@ function AppContent() {
     useEffect(() => {
         const loadTemplates = async () => {
             try {
-                const tfSaved = localStorage.getItem('custom_template_tf_v3');
-                const ptSaved = localStorage.getItem('custom_template_pt_v3');
-
                 const [tfResponse, ptResponse] = await Promise.all([
                     fetch('/template_antrenare_tensorflow.py'),
                     fetch('/template_antrenare_pytorch.py')
                 ]);
                 if (tfResponse.ok) {
                     const content = await tfResponse.text();
-                    if (!tfSaved) setTemplateTensorflow(content);
+                    setTemplateTensorflow(content);
                 } else {
                     console.warn('Failed to load TensorFlow template');
                 }
                 if (ptResponse.ok) {
                     const content = await ptResponse.text();
-                    if (!ptSaved) setTemplatePytorch(content);
+                    setTemplatePytorch(content);
                 } else {
                     console.warn('Failed to load PyTorch template');
                 }
@@ -618,13 +611,11 @@ function AppContent() {
     const handleContentChange = async (newContent) => {
         if (!activeFile) return;
 
-        // Persist the changes to the user's custom template
+        // Update the template state in memory
         if (activeTemplate === 'tensorflow') {
             setTemplateTensorflow(newContent);
-            localStorage.setItem('custom_template_tf_v3', newContent);
         } else {
             setTemplatePytorch(newContent);
-            localStorage.setItem('custom_template_pt_v3', newContent);
         }
 
         try {
